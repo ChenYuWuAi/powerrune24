@@ -1,6 +1,9 @@
 #include <stdio.h>
 
-void app_main(void)
+int app_main(void)
 {
+    //Test
+    printf("Test.");
 
+    return 0;
 }
