@@ -13,8 +13,13 @@
 
 const char *TAG = "main";
 
+// LED_WS2812B相关定义
+#define LED_Strip_IO 18
+#define LED_Strip_Channel 0
+
 // LED_WS2812B相关库
 #include "esp_log.h"
+#include "driver/gpio.h"
 #include "driver/rmt.h"
 #include "driver/rmt_tx.h"
 #include "driver/rmt_encoder.h"
@@ -38,7 +43,7 @@ protected:
     uint16_t LED_Strip_length;
 
 public:
-    LED_Strip(uint8_t io_num, uint8_t channel, uint16_t LED_Strip_length);
+    LED_Strip(gpio_num_t io_num, rmt_channel_t channel=RMT_CHANNEL_3, uint16_t LED_Strip_length);
     static size_t LED_encoder(rmt_encoder_t *encoder, rmt_channel_handle_t channel, const void *primary_data, size_t data_size, rmt_encode_state_t *ret_state);
     // 单灯颜色
     LED_color_info_t &operator[](uint16_t index);
@@ -54,7 +59,7 @@ public:
 rmt_channel_handle_t LED_Strip::LED_encoder_handle = NULL;
 uint8_t LED_Strip::LED_Strip_num = 0;
 
-LED_Strip::LED_Strip(uint8_t io_num, uint8_t channel, uint16_t LED_Strip_length)
+LED_Strip::LED_Strip(gpio_num_t io_num, rmt_channel_t channel, uint16_t LED_Strip_length)
 {
     if (LED_Strip_num == 0)
     {
