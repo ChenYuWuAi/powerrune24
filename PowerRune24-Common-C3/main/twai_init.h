@@ -21,7 +21,7 @@ extern  "C"  {
 
 //#define TX_TWAI_PIN  GPIO_NUM_4
 //#define RX_TWAI_PIN  GPIO_NUM_5
-
+//
 static const twai_timing_config_t timing_config = TWAI_TIMING_CONFIG_500KBITS();
 static const twai_filter_config_t filter_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 static TaskHandle_t TWAI_handle;
@@ -46,4 +46,4 @@ void twai_init(gpio_num_t TX_TWAI_PIN, gpio_num_t RX_TWAI_PIN) {
 }
 #endif
 
-#endif /* _TWAI_H_ */
+#endif 
