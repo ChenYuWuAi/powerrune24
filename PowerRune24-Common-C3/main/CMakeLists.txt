@@ -1,2 +1,2 @@
-idf_component_register(SRCS "simple_pid.cpp" "motor_crtl.cpp"
-                    INCLUDE_DIRS ".")
+idf_component_register(SRCS "main.cpp"
+                    INCLUDE_DIRS "")
