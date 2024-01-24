@@ -1,3 +1,2 @@
-idf_component_register(SRCS 
+idf_component_register(SRCS "simple_pid.cpp" "motor_crtl.cpp"
                     INCLUDE_DIRS ".")
-target_compile_options(${COMPONENT_LIB} PRIVATE -std=gnu++11)

@@ -6,106 +6,63 @@
 extern  "C"  {
 #endif
 
-#include <stdio.h>
+#include "stdint.h"
 
-#define TAG "PID"
+class PID{
+private:
+    typedef struct _PID_TypeDef {	
+        float target;
+        float lastNoneZeroTarget;
+        float kp;
+        float ki;
+        float kd;
+        
+        float  measure;			//测量值
+        float  err;				//误差
+        float  last_err;      	//上次误差
+        
+        float pout;
+        float iout;
+        float dout;
+        
+        float output;			//本次输出
+        // float last_output;      //上次输出
+        
+        float MaxOutput;		//输出限幅
+        float IntegralLimit;	//积分限幅
+        float DeadBand;			//死区（绝对值）
+        //float ControlPeriod;  //控制周期
+        float Max_Err;			//最大误差
+        
+        uint32_t thistime;
+        uint32_t lasttime;
+        uint8_t dtime;	
+        
+    }PID_TypeDef;
 
-//PID variables
-typedef struct{
-    float Kp;
-    float Ki;
-    float Kd;
-    float p;
-    float i;
-    float d;
-    float p_MAX;
-    float i_MAX;
-    float d_MAX;
-    float out_MAX;
-    float out;
-    float err; 
-}PID_var;
-
-//PID keys
-typedef enum {
-    kp,
-    ki,
-    kd,
-    p_max,
-    i_max,
-    d_max,
-    out_max
-}PID_key;
-
-class PID {
-protected:
-    //init PID variables
-    PID(PID_var *pid, float Kp, float Ki, float Kd, float p_MAX, float i_MAX, float d_MAX, float out_MAX){
-        pid->Kp = Kp;
-        pid->Ki = Ki;
-        pid->Kd = Kd;
-        pid->p_MAX = p_MAX;
-        pid->i_MAX = i_MAX;
-        pid->d_MAX = d_MAX;
-        pid->out_MAX = out_MAX;
-        pid->err = 0.0f;
-
-    };
-public: 
-    //modify PID variables
-    void modify(PID_var* pid, PID_key key, float value){    
-        switch (key) {
-        case kp:
-            pid->Kp = value;
-            break;
-        case ki:
-            pid->Ki = value;
-            break;
-        case kd:
-            pid->Kd = value;
-            break;
-        case p_max:
-            pid->p_MAX = value;
-            break;
-        case i_max:
-            pid->i_MAX = value;
-            break;
-        case d_max:
-            pid->d_MAX = value;
-            break;
-        case out_max:
-            pid->out_MAX = value;
-            break;
-        default:
-            
-            break;
-    }
-    };
-
-    //calculate PID
-    float calc(PID_var* pid, float input, float target) {
-        float error = target - input;
-        pid->p = pid->Kp * pid->err;
-        pid->i += pid->Ki * pid->err;
-        if (pid->i > pid->i_MAX) {
-            pid->i = pid->i_MAX;
-        } else if (pid->i < -pid->i_MAX) {
-            pid->i = -pid->i_MAX;
-        }
-        pid->d = pid->Kd * (error - pid->err);
-        pid->err = error;
-
-        pid->out = pid->p + pid->i + pid->d;
-        if (pid->out > pid->out_MAX) {
-            pid->out = pid->out_MAX;
-        } else if (pid->out < -pid->out_MAX) {
-            pid->out = -pid->out_MAX;
-        }
+public:
+    PID();
     
-        return pid->out;
+    void PID_INIT(  PID_TypeDef* pid, 
+                    uint16_t maxout,
+                    uint16_t intergral_limit,
+                    float deadband,
+                    int16_t max_err,
+                    int16_t target,
+                    float kp, 
+                    float ki, 
+                    float kd);
 
-    };
+    void PID_RESET( PID_TypeDef* pid, 
+                    float kp, 
+                    float ki, 
+                    float kd);
 
+    void PID_TARGET(PID_TypeDef* pid, 
+                        uint16_t new_target);
+
+    float PID_CALC( PID_TypeDef* pid, 
+                    int16_t measure);
 };
 
 #ifdef  __cplusplus
