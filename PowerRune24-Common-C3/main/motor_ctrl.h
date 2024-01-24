@@ -85,39 +85,25 @@ typedef enum {
 
 class motor {
 private:  
-    static TaskHandle_t TWAI_handle;
     gpio_num_t TX_TWAI_GPIO;
     gpio_num_t RX_TWAI_GPIO;
 
     //PID crtl
-    PID* motor_PID;
-
+    //PID* motor_PID;
+    
     esp_err_t set_current(uint8_t motor_id, int16_t current) {
-        for(size_t i = 0; i < motor_counts; i++) {
-            if(motor_info[i].motor_id == motor_id) {
-                size_t t = i;
-                for(size_t j = i; j < motor_counts - 1; j++) {
-                    motor_info[j].set_current = current;
-
-                }
-
-                break;
-
+        for(size_t i=0; i < motor_counts; i++) {
+            if(motor_info[i].motor_id == motor_id){
+                motor_info[i].set_current == current;
             }
-
         }
     };
 
 protected:
     motor_info_t* motor_info;
-    size_t motor_counts = 0;
+    size_t motor_counts;
 
-    //motor TWAI
-    motor(gpio_num_t TX_TWAI_GPIO, gpio_num_t RX_TWAI_GPIO){
-          
-
-    };
-    
+    //start motor TWAI
     virtual void task_motor(void* args){
         twai_message_t twai_msg_tr;
         memset(&twai_msg_tr, 0, sizeof(twai_message_t));
@@ -145,7 +131,7 @@ protected:
         }
     };
 
-    
+    //check motor state
     virtual void state_check(void* args){    
         while(1) {
         twai_message_t twai_msg_re;
@@ -162,7 +148,8 @@ protected:
                     motor_info[i].current = (twai_msg_re.data[4] << 8) | twai_msg_re.data[5]; 
                     motor_info[i].temp = twai_msg_re.data[6]; 
 
-                    printf("Motor %d State: Speed %d, Current %d, Temp %d .\n", motor_id, motor_info[i].speed, motor_info[i].current, motor_info[i].temp);
+                    printf("Motor %d State: Speed %d, Current %d, Temp %d .\n", 
+                            motor_id, motor_info[i].speed, motor_info[i].current, motor_info[i].temp);
                 }
             }
         }else if(receive_status == ESP_ERR_TIMEOUT){
@@ -171,10 +158,30 @@ protected:
             printf("Failed to receive TWAI message.\n");
         }
 
-        vTaskDelay(pdMS_TO_TICKS(20));  // 这个延迟需要根据实际硬件和系统需求来调整
+        vTaskDelay(pdMS_TO_TICKS(20)); 
+
         }
-        
+
     };
+
+    //motor init
+    motor(gpio_num_t TX_TWAI_GPIO, gpio_num_t RX_TWAI_GPIO){
+        this->TX_TWAI_GPIO = TX_TWAI_GPIO;
+        this->RX_TWAI_GPIO = RX_TWAI_GPIO;
+
+        twai_init(this->TX_TWAI_GPIO, this->RX_TWAI_GPIO);
+
+        //
+        BaseType_t task_created = xTaskCreate(this->task_motor, "task_motor", 2048, NULL, 5, &(this->TWAI_handle));
+        if(task_created == pdPASS) {
+            printf("TWAI task created.\n");
+        }else {
+            printf("Failed to create TWAI task.\n");
+        }
+
+        motor_counts = 0;
+        motor_info = new motor_info_t[motor_counts];
+    }
 
 
 public:
@@ -193,7 +200,7 @@ public:
         new_motor.set_current = 0;
         new_motor.speed = 0;
         new_motor.current = 0;
-        new_motor.torque = 0;
+        //new_motor.torque = 0;
         new_motor.temp = 0;
         //new_motor.motor_status = MOTOR_DISABLED
 
@@ -218,7 +225,7 @@ public:
 
                 }
                 motor_counts -= 1;
-                printf("Motor %d deleted.\n",&t);
+                printf("Motor %d deleted.\n", &t);
 
                 break;
 
@@ -274,8 +281,7 @@ public:
             if(motor_info[i].motor_id == motor_id) {      
                 //motor_info[i].motor_status = MOTOR_TRACE_SIN_PENDING;
                 motor_info[i].speed = 0;
-                motor_info[i].speed_trace_sin_info.set_speed = motor_info[i].set_speed;  // 设置期望速度
-                motor_info[i].speed_trace_sin_info.amplitude = amplitude; 
+                motor_info[i].speed_trace_sin_info.set_speed = motor_info[i].set_speed;
                 motor_info[i].speed_trace_sin_info.omega = omega;  
                 motor_info[i].speed_trace_sin_info.speed_angular = 2 * M_PI * omega;  
                 motor_info[i].speed_trace_sin_info.offset = offset;  
