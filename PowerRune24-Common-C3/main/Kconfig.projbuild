@@ -1,5 +1,5 @@
 menu "Example Configuration"
-
+##
     orsource "$IDF_PATH/examples/common_components/env_caps/$IDF_TARGET/Kconfig.env_caps"
 
     config EXAMPLE_TX_GPIO_NUM
