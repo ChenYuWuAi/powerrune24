@@ -1,19 +1,6 @@
 /**
- * @file main.cpp
- * @brief 单元测试入口
- * @version 0.1
- * @date 2024-01-23
- * @note 本文件不会被编译到固件中，只用于测试Common里面的通用类型库。
+ *
  */
-#include <stdio.h>
-#include "esp_log.h"
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <esp_event_loop.h>
-
-const char *TAG = "main";
-
-// LED_WS2812B相关定义
 #define LED_Strip_IO 18
 #define LED_Strip_Channel 0
 
@@ -24,6 +11,9 @@ const char *TAG = "main";
 #include "driver/rmt_tx.h"
 #include "driver/rmt_encoder.h"
 #include "esp_err.h"
+
+// TAG
+const char *TAG = "LED_Strip";
 
 struct LED_color_info_t
 {
@@ -61,20 +51,22 @@ uint8_t LED_Strip::LED_Strip_num = 0;
 
 LED_Strip::LED_Strip(gpio_num_t io_num, rmt_channel_t channel, uint16_t LED_Strip_length)
 {
+    ESP_LOGI(TAG, "Initialzing LED_Strip Driver")
     rmt_tx_channel_config_t tx_chan_config = {
         .gpio_num = io_num,
         .clk_src = RMT_CLK_SRC_DEFAULT, // select source clock
-        .resolution_hz = 10000000, // 10Mhz
-        .trans_queue_depth = 4, // We want to be able to queue 4 items
+        .resolution_hz = 10000000,      // 10Mhz (Period: 0.1uS) for WS2812B
+        .trans_queue_depth = 4,         // We want to be able to queue 4 items
         .flags = {.with_dma = 1},
     };
-    LED_Strip_num++;
+    ESP_ERROR_CHECK(rmt_new_tx_channel(&tx_chan_config, &LED_encoder_handle));
+    ESP_LOGI(TAG, "Installing LED_Strip encoder");
+    rmt_encoder_handle_t led_encoder = NULL;
+    ESP_ERROR_CHECK(rmt_new_led_strip_encoder(&encoder_config, &led_encoder));
+
     this->LED_Strip_length = LED_Strip_length;
     this->LED_Strip_color = new LED_color_info_t[LED_Strip_length];
-}
-
-extern "C" void app_main(void)
-{
-    // 在此编写单元测试代码
-    ESP_LOGI("main", "Unit Test Start");
+    ESP_LOGI(TAG, "Enabling RMT TX channel");
+    ESP_ERROR_CHECK(rmt_enable(led_chan));
+    LED_Strip_num++;
 }
