@@ -1,7 +1,12 @@
 #include <stdio.h>
-#include <motor_ctrl.h>
+#include "motor_ctrl.h"
 
-int main(){
+void app_main(void){
+    
 
+    while(1){
+        
+
+    }
     
 }

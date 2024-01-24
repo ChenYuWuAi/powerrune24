@@ -52,7 +52,8 @@ protected:
 
     };
 public: 
-    //modify PID variables
+    //modify PID variables??
+    /*
     void modify(PID_var* pid, PID_key key, float value){    
         switch (key) {
         case kp:
@@ -81,7 +82,8 @@ public:
             break;
     }
     };
-
+    */
+   
     //calculate PID
     float calc(PID_var* pid, float input, float target) {
         float error = target - input;

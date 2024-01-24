@@ -23,6 +23,7 @@ extern  "C"  {
 
 #include <stdio.h>
 #include <string.h>
+#include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <driver/gpio.h>
 #include <driver/twai.h>
@@ -84,6 +85,7 @@ typedef enum {
 }motor_status_t;
 
 class motor {
+
 private:  
     gpio_num_t TX_TWAI_GPIO;
     gpio_num_t RX_TWAI_GPIO;
@@ -131,7 +133,7 @@ protected:
         }
     };
 
-    //check motor state
+    //get motor state from TWAI
     virtual void state_check(void* args){    
         while(1) {
         twai_message_t twai_msg_re;
