@@ -49,8 +49,15 @@ public:
 rmt_channel_handle_t LED_Strip::LED_encoder_handle = NULL;
 uint8_t LED_Strip::LED_Strip_num = 0;
 
+static size_t LED_encoder(rmt_encoder_t *encoder, rmt_channel_handle_t channel, const void *primary_data, size_t data_size, rmt_encode_state_t *ret_state){
+    
+}
+
 LED_Strip::LED_Strip(gpio_num_t io_num, rmt_channel_t channel, uint16_t LED_Strip_length)
 {
+    this->LED_Strip_length = LED_Strip_length;
+    this->LED_Strip_color = new LED_color_info_t[LED_Strip_length];
+
     ESP_LOGI(TAG, "Initialzing LED_Strip Driver")
     rmt_tx_channel_config_t tx_chan_config = {
         .gpio_num = io_num,
@@ -64,8 +71,6 @@ LED_Strip::LED_Strip(gpio_num_t io_num, rmt_channel_t channel, uint16_t LED_Stri
     rmt_encoder_handle_t led_encoder = NULL;
     ESP_ERROR_CHECK(rmt_new_led_strip_encoder(&encoder_config, &led_encoder));
 
-    this->LED_Strip_length = LED_Strip_length;
-    this->LED_Strip_color = new LED_color_info_t[LED_Strip_length];
     ESP_LOGI(TAG, "Enabling RMT TX channel");
     ESP_ERROR_CHECK(rmt_enable(led_chan));
     LED_Strip_num++;
