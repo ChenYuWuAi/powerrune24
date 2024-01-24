@@ -166,7 +166,7 @@ protected:
 
     };
 
-    //motor init
+    //motor init 。
     motor(gpio_num_t TX_TWAI_GPIO, gpio_num_t RX_TWAI_GPIO){
         this->TX_TWAI_GPIO = TX_TWAI_GPIO;
         this->RX_TWAI_GPIO = RX_TWAI_GPIO;
