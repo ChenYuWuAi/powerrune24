@@ -5,6 +5,7 @@
  * @date 2024-01-24
  * @author CH
  */
+#pragma once
 #include "driver/gpio.h"
 template <uint8_t BITS>
 class DEMUX

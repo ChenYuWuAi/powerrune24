@@ -20,7 +20,7 @@ const char *TAG = "Unit Test";
 // 测试LED_Strip
 LED_Strip LED_Strip_0(GPIO_NUM_11, 301);
 LED_Strip LED_Strip_1(GPIO_NUM_11, 86);
-LED_Strip LED_Strip_2(GPIO_NUM_11, 86);
+LED_Strip LED_Strip_2(GPIO_NUM_11, 92);
 
 gpio_num_t DEMUX_IO[3] = {GPIO_NUM_14, GPIO_NUM_21, GPIO_NUM_38};
 gpio_num_t DEMUX_IO_enable = GPIO_NUM_13;
@@ -48,7 +48,7 @@ extern "C" void app_main(void)
     ESP_LOGI(TAG, "Unit Test Start");
 
     // LED Blink Code
-    LED blink(GPIO_NUM_48, 1, 2, 3);
+    LED blink(GPIO_NUM_48, 1, 2, 5);
 
     // GPIO 0 for test
     gpio_config_t io_conf;
@@ -78,7 +78,7 @@ extern "C" void app_main(void)
 
     // create task
     TaskHandle_t LED_update_task_handle;
-    xTaskCreate(&LED_update_task, "LED_update_task", 2048, NULL, 5, &LED_update_task_handle);
+    xTaskCreatePinnedToCore(&LED_update_task, "LED_update_task", 2048, NULL, 5, &LED_update_task_handle, 1);
 
     while (1)
     {

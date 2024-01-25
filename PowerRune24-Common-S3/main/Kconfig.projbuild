@@ -1,0 +1,43 @@
+menu "PowerRune Project Configuration"
+
+    orsource "$IDF_PATH/examples/common_components/env_caps/$IDF_TARGET/Kconfig.env_caps"
+
+    config POWERRUNE_TYPE
+        int "PowerRune Driver Board Type"
+        default 0
+        help
+            PowerRune driver board type (0:ARMOUR, 1:RLOGO, 2:MOTORCTL)
+
+    config DEFAULT_UPDATE_URL
+        string "PowerRune Update Server Address"
+        default "http://10.203.221.22/pr_ota_bin/"
+        help
+            The server address where the PowerRune update files are stored
+
+    config DEFAULT_UPDATE_FILE
+        string "PowerRune Update Filename"
+        default "PowerRune_%i_latest.bin"
+        help
+            %i represents the driver board type (0:ARMOUR, 1:RLOGO, 2:MOTORCTL)
+
+    config DEFAULT_UPDATE_SSID
+        string "PowerRune Update Default WiFi Name"
+        default "SEU-WLAN"
+
+    config DEFAULT_UPDATE_PWD
+        string "PowerRune Update Default WiFi Password"
+        default ""
+
+    config DEFAULT_UPDATE_TIME_OUT
+        int "OTA Timeout"
+        default 5000
+        help
+            Maximum time for reception
+
+    config NVS_NAMESPACE
+        string "NVS Namespace"
+        default "powerrune"
+        help
+            Namespace for NVS
+
+endmenu

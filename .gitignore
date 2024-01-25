@@ -78,3 +78,4 @@ flake8_output.txt
 
 # ESP-IDF library 
 build
+*.log

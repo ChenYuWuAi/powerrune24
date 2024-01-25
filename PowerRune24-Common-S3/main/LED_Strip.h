@@ -6,8 +6,10 @@
  * @author CH
  * @note 改编自官方示例
  */
+#pragma once
+#ifdef CONFIG_IDF_TARGET_ESP32S3
 #define ENABLE_DMA // S3库需要使能该宏定义，C3库不需要
-
+#endif
 #include "esp_log.h"
 #include "esp_err.h"
 #include "esp_check.h"

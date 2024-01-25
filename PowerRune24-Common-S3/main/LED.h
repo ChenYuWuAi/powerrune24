@@ -3,7 +3,9 @@
  * @brief LED类，用于控制小型LED灯，有三种操作模式：常亮、呼吸灯、按编码闪烁
  * @version 1
  * @date 2024-01-25
+ * @author CH
  */
+#pragma once
 #include <driver/gpio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -14,7 +16,7 @@
 #include <esp_attr.h>
 #include <string.h>
 
-#define LED_MAX_DUTY 4000
+#define LED_MAX_DUTY 4095
 
 // LOG TAG
 static const char *TAG_LED = "LED";
@@ -66,10 +68,10 @@ public:
                 break;
             case 1:
                 if (led->fade_up)
-                    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, led->ledc_channel.channel, LED_MAX_DUTY, 1000);
+                    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LED_MAX_DUTY, 1000);
                 else
-                    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, led->ledc_channel.channel, 0, 1000);
-                ledc_fade_start(LEDC_LOW_SPEED_MODE, led->ledc_channel.channel, LEDC_FADE_NO_WAIT);
+                    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0, 1000);
+                ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
                 break;
             case 2:
                 // 闪烁编码 0 为常亮 其他数为1000ms内闪烁code次，其他时候关闭，延时用vTaskDelay
@@ -82,9 +84,9 @@ public:
                     for (int i = 0; i < led->blink_code; i++)
                     {
                         ESP_ERROR_CHECK(gpio_set_level(led->gpio_num, !led->invert));
-                        vTaskDelay(((1000 / led->blink_code) * 0.45) / portTICK_PERIOD_MS);
+                        vTaskDelay(150 / portTICK_PERIOD_MS);
                         ESP_ERROR_CHECK(gpio_set_level(led->gpio_num, led->invert));
-                        vTaskDelay(((1000 / led->blink_code) * 0.55) / portTICK_PERIOD_MS);
+                        vTaskDelay(150 / portTICK_PERIOD_MS);
                     }
                     vTaskDelay(1500 / portTICK_PERIOD_MS);
                 }
@@ -115,7 +117,7 @@ public:
         ledc_channel.gpio_num = gpio_num;
         ledc_channel.speed_mode = LEDC_LOW_SPEED_MODE;
         ledc_channel.hpoint = 0;
-        ledc_channel.timer_sel = LEDC_TIMER_1;
+        ledc_channel.timer_sel = LEDC_TIMER_0;
         ledc_channel.duty = 0;
         ledc_channel.flags.output_invert = invert;
 
