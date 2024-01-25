@@ -33,7 +33,8 @@ extern "C" void app_main(void)
 
     Motor motor_3508(id, motor_counts, GPIO_NUM_4, GPIO_NUM_5);
     motor_3508.unlock_motor(1);
-    motor_3508.set_speed(1, 500);
+    motor_3508.set_speed(1, 2000);
+    
     while (1)
     {
         vTaskDelay(1000 / portTICK_PERIOD_MS);

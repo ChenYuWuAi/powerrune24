@@ -423,6 +423,7 @@ protected:
 
                 case MOTOR_NORMAL:
                     // TODO PID_CURRENT = motor_ctrl->getOutput(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed);
+                    PID_CURRENT = motor_ctrl->getValue(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed);
                     set_current(motor_info[i].motor_id, PID_CURRENT, current_info);
 /*
 #ifdef DEBUG_NO_PID
