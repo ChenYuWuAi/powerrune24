@@ -6,6 +6,7 @@
 
 // event loop
 #include "event_source.h"
+#include "PowerRune_Events.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -161,7 +162,7 @@ static const uint8_t char_prop_read_write_notify = ESP_GATT_CHAR_PROP_BIT_READ |
 // 系统参数设置服务的属性表的相关全局变量
 // led
 static const uint16_t spp_led_uuid = UUID_LED; // 设置led的uuid
-static const u_int8_t spp_led_val[3] = {0};    // led的状态（value）只有一个值
+static const u_int8_t spp_led_val[1] = {0};    // led的状态（value）只有一个值
 static const uint8_t spp_led_ccc[2] = {0};
 // url
 static const uint16_t url_uuid = UUID_URL;
@@ -433,6 +434,10 @@ ESP_EVENT_DEFINE_BASE(GPA_EVENTS);
 ESP_EVENT_DEFINE_BASE(UNLK_EVENTS);
 ESP_EVENT_DEFINE_BASE(STOP_EVENTS);
 ESP_EVENT_DEFINE_BASE(OTA_EVENTS);
+//PowerRune_Evets
+ESP_EVENT_DEFINE_BASE(PRC);
+ESP_EVENT_DEFINE_BASE(PRA);
+ESP_EVENT_DEFINE_BASE(PRM);
 
 // event loop中的handle
 // Handler which executes when the ble started event gets executed by the loop.
@@ -479,9 +484,7 @@ static void ble_led_write_handler(void *handler_args, esp_event_base_t base, int
 
     printf("获取led特征值    OK\n");
     printf("length = %d\r\n", len);
-    printf("value0 = %d\r\n", value[0]);
-    printf("value1 = %d\r\n", value[1]);
-    printf("value2 = %d\r\n", value[2]);
+    printf("value = %d\r\n", *value);
 
     if (*value == 1)
         gpio_set_level(GPIO_NUM_2, 0);
@@ -1342,42 +1345,42 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, mac_read_handler, NULL, NULL));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, mac_write_handler, NULL, NULL));
     // Register ssid event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, ssid_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, ssid_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(SSID_EVENTS, SSID_EVENT_READ, ssid_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(SSID_EVENTS, SSID_EVENT_WRITE, ssid_write_handler, NULL, NULL));
     // Register wifi event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, wifi_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, wifi_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(Wifi_EVENTS, Wifi_EVENT_READ, wifi_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(Wifi_EVENTS, Wifi_EVENT_WRITE, wifi_write_handler, NULL, NULL));
     // Register aota event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, aota_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, aota_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(AOTA_EVENTS, AOTA_EVENT_READ, aota_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(AOTA_EVENTS, AOTA_EVENT_WRITE, aota_write_handler, NULL, NULL));
     // Register lit event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, lit_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, lit_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(LIT_EVENTS, LIT_EVENT_READ, lit_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(LIT_EVENTS, LIT_EVENT_WRITE, lit_write_handler, NULL, NULL));
     // Register strip_lit event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, strip_lit_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, strip_lit_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(STRIP_LIT_EVENTS, STRIP_LIT_EVENT_READ, strip_lit_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(STRIP_LIT_EVENTS, STRIP_LIT_EVENT_WRITE, strip_lit_write_handler, NULL, NULL));
     // Register r_lit event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, r_lit_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, r_lit_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(R_LIT_EVENTS, R_LIT_EVENT_READ, r_lit_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(R_LIT_EVENTS, R_LIT_EVENT_WRITE, r_lit_write_handler, NULL, NULL));
     // Register matrix_lit event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, matrix_lit_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, matrix_lit_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(MATRIX_LIT_EVENTS, MATRIX_LIT_EVENT_READ, matrix_lit_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(MATRIX_LIT_EVENTS, MATRIX_LIT_EVENT_WRITE, matrix_lit_write_handler, NULL, NULL));
     // Register pid event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, pid_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, pid_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(PID_EVENTS, PID_EVENT_READ, pid_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(PID_EVENTS, PID_EVENT_WRITE, pid_write_handler, NULL, NULL));
     // Register armor_id event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, armor_id_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, armor_id_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(ARMOR_ID_EVENTS, ARMOR_ID_EVENT_READ, armor_id_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(ARMOR_ID_EVENTS, ARMOR_ID_EVENT_WRITE, armor_id_write_handler, NULL, NULL));
     // ops服务
     //  Register run event handlers.
     ESP_ERROR_CHECK(esp_event_handler_instance_register(RUN_EVENTS, RUN_EVENT_WRITE, run_write_handler, NULL, NULL));
     // Register gpa event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(RUN_EVENTS, RUN_EVENT_WRITE, gpa_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(GPA_EVENTS, GPA_EVENT_READ, gpa_read_handler, NULL, NULL));
     // Register unlk event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(RUN_EVENTS, RUN_EVENT_WRITE, unlk_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(UNLK_EVENTS, UNLK_EVENT_WRITE, unlk_write_handler, NULL, NULL));
     // Register stop event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(RUN_EVENTS, RUN_EVENT_WRITE, stop_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(STOP_EVENTS, STOP_EVENT_WRITE, stop_write_handler, NULL, NULL));
     // Register ota event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(RUN_EVENTS, RUN_EVENT_WRITE, ota_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(OTA_EVENTS, OTA_EVENT_WRITE, ota_write_handler, NULL, NULL));
     return;
 }
