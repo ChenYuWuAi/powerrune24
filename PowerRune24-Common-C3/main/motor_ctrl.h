@@ -28,7 +28,8 @@ Function List:  void task_motor(void *args)
 #include <driver/twai.h>
 #include <esp_err.h>
 #include <esp_log.h>
-#include "MiniPID.h"
+#include <PID.h>
+// #include "MiniPID.h"
 
 // #define DEBUG_NO_PID
 // #define DEBUG_NO_PID_CURRENT 250
@@ -82,8 +83,9 @@ typedef struct
     uint32_t last_received;
 } motor_info_t;
 
-class Motor
+class Motor : PIDController
 {
+
 private:
     gpio_num_t TX_TWAI_GPIO;
     gpio_num_t RX_TWAI_GPIO;
@@ -96,7 +98,6 @@ private:
         int16_t iq3;
         int16_t iq4;
     };
-    static MiniPID pid;
 
     /**
      * @brief 根据对应电机ID将输入的current存入到current_info对应的结构体成员中
@@ -159,10 +160,13 @@ public:
     /**
      * @brief 初始化电机, 需要手动设置motor_counts, TX和RX的IO口
      */
-    Motor(uint8_t *motor_id, uint8_t motor_counts = 1, gpio_num_t TX_TWAI_GPIO = GPIO_NUM_4, gpio_num_t RX_TWAI_GPIO = GPIO_NUM_5)
+    // TODO
+    Motor(uint8_t *motor_id, uint8_t motor_counts = 1, gpio_num_t TX_TWAI_GPIO = GPIO_NUM_4, gpio_num_t RX_TWAI_GPIO = GPIO_NUM_5, double Kp = 1.0, double Ki = 0.0, double Kd = 0.1) : PIDController(Kp, Ki, Kd)
     {
         this->TX_TWAI_GPIO = TX_TWAI_GPIO;
         this->RX_TWAI_GPIO = RX_TWAI_GPIO;
+
+        PIDController pid(1, 0, 0.1);
 
         twai_timing_config_t timing_config = TWAI_TIMING_CONFIG_1MBITS();
         twai_filter_config_t filter_config = {
@@ -360,7 +364,7 @@ protected:
                     if ((motor_info[i].motor_status == MOTOR_DISCONNECTED) & (current_tick - motor_info[i].last_received < 100))
                     {
                         motor_info[i].motor_status = MOTOR_DISABLED_LOCKED;
-                    }*
+                    };
 
                     ESP_LOGI(TAG_TWAI, "Motor %d State: Speed %d, Current %d, Temp %d .", motor_id, motor_info[i].speed, motor_info[i].current, motor_info[i].temp);
                 }
@@ -390,12 +394,23 @@ protected:
         current_info_t current_info;
         memset(&current_info, 0, sizeof(current_info_t));
 
+        double PID_CURRENT = 0;
+
+        for (size_t i = 0; i < motor_counts; i++){
+            if(motor_ctrl->motor_info[i].motor_status == MOTOR_NORMAL){
+                PID_CURRENT = motor_ctrl->getValue(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed);
+            }
+        };
+        
+
         while (1)
         {
             state_check();
             for (size_t i = 0; i < motor_counts; i++)
             {
                 ESP_LOGI(TAG_TWAI, "Motor %d status: %d", motor_info[i].motor_id, motor_info[i].motor_status);
+
+                // TODO double PID_CURRENT = 0.0f;
 
                 // check motor status
                 switch (motor_ctrl->motor_info[i].motor_status)
@@ -407,22 +422,23 @@ protected:
                     break;
 
                 case MOTOR_NORMAL:
-                    set_current(motor_info[i].motor_id, (int)(pid->getOutput(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed)), current_info);
-                    /*
-                    #ifdef DEBUG_NO_PID
-                                        set_current(motor_info[i].motor_id, DEBUG_NO_PID_CURRENT, current_info);
-                    #endif
-                    #ifndef DEBUG_NO_PID
+                    // TODO PID_CURRENT = motor_ctrl->getOutput(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed);
+                    set_current(motor_info[i].motor_id, PID_CURRENT, current_info);
+/*
+#ifdef DEBUG_NO_PID
+                    set_current(motor_info[i].motor_id, DEBUG_NO_PID_CURRENT, current_info);
+#endif
+#ifndef DEBUG_NO_PID
 
-                                        set_current(motor_info[i].motor_id, motor_info[i].set_current, current_info);
-                                        break;
-                    #endif
-                    */
+                    set_current(motor_info[i].motor_id, motor_info[i].set_current, current_info);
+                    break;
+#endif
+*/
                 default:
+
                     break;
                 }
             }
-
             send_motor_current(current_info);
             ESP_LOGI(TAG_TWAI, "Current: %d, %d, %d, %d", current_info.iq1, current_info.iq2, current_info.iq3, current_info.iq4);
             vTaskDelay(1 / portTICK_PERIOD_MS);
@@ -433,6 +449,5 @@ protected:
 
 motor_info_t *Motor::motor_info = NULL;
 size_t Motor::motor_counts = 0;
-MiniPID Motor::pid = MiniPID();
 
 #endif
