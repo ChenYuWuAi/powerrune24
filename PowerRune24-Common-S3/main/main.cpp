@@ -64,18 +64,6 @@ extern "C" void app_main(void)
     DEMUX_LED.enable();
     DEMUX_LED = 0;
 
-    // // Red
-    // LED_color_info_t LED_Red;
-    // LED_Red = {0, 255, 0};
-
-    // // Green
-    // LED_color_info_t LED_Green;
-    // LED_Green = {255, 0, 0};
-
-    // // Blue
-    // LED_color_info_t LED_Blue;
-    // LED_Blue = {0, 0, 255};
-
     // create task
     TaskHandle_t LED_update_task_handle;
     xTaskCreatePinnedToCore(&LED_update_task, "LED_update_task", 2048, NULL, 5, &LED_update_task_handle, 1);

@@ -21,17 +21,18 @@ Function List:  void task_motor(void *args)
 #define _MOTOR_H_
 
 #include <string.h>
+#include <math.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <driver/gpio.h>
 #include <driver/twai.h>
 #include <esp_err.h>
-#include <math.h>
 #include <esp_log.h>
-#include "MiniPID.h"
+#include <PID.h>
+// #include "MiniPID.h"
 
-#define DEBUG_NO_PID
-#define DEBUG_NO_PID_CURRENT 250
+// #define DEBUG_NO_PID
+// #define DEBUG_NO_PID_CURRENT 250
 
 const char *TAG_TWAI = "TWAI";
 
@@ -58,6 +59,9 @@ typedef enum
     // 运转中
     MOTOR_NORMAL,
 
+    //速度正在改变中
+    MOTOR_NORMAL_PENDING,
+
     // state: 电机启动需要时间, 到达正弦转速后启动LED,
     // 此时进入MOTOR_TRACE_SIN_PENDING状态
     MOTOR_TRACE_SIN_PENDING,
@@ -82,15 +86,14 @@ typedef struct
     uint32_t last_received;
 } motor_info_t;
 
-class Motor
+class Motor : PIDController
 {
+
 private:
     gpio_num_t TX_TWAI_GPIO;
     gpio_num_t RX_TWAI_GPIO;
 
-    // // PID crtl
-    // static PID *pid;
-
+    // current[0:3], 存储电流数据
     struct current_info_t
     {
         int16_t iq1;
@@ -98,8 +101,10 @@ private:
         int16_t iq3;
         int16_t iq4;
     };
-    // current[0:3]
 
+    /**
+     * @brief 根据对应电机ID将输入的current存入到current_info对应的结构体成员中
+     */
     static esp_err_t set_current(uint8_t motor_id, int16_t current, current_info_t &current_info)
     {
         for (size_t i = 0; i < motor_counts; i++)
@@ -129,6 +134,9 @@ private:
         return ESP_OK;
     };
 
+    /**
+     * @brief 使用current_info结构体向tx_msg存入电流数据, 此前需要使用set_current()初始化current_info
+     */
     static void send_motor_current(current_info_t &current_info)
     {
         twai_message_t tx_msg;
@@ -151,105 +159,17 @@ private:
         ESP_ERROR_CHECK(twai_transmit(&tx_msg, portMAX_DELAY));
     }
 
-protected:
-    static motor_info_t *motor_info;
-    static size_t motor_counts;
-
-    // get motor state from TWAI
-    static void state_check()
-    {
-        twai_message_t twai_msg_re;
-        static uint32_t current_tick = 0;
-        current_tick = xTaskGetTickCount();
-        ESP_LOGI(TAG_TWAI, "Current tick: %lu", current_tick);
-        // while receive queue is not empty
-        if (twai_receive(&twai_msg_re, 100) == ESP_OK)
-        {
-            uint8_t motor_id = twai_msg_re.identifier - 0x200;
-            for (size_t i = 0; i < motor_counts; i++)
-            {
-                // update reveive time
-                motor_info[i].last_received = xTaskGetTickCount();
-                if (motor_info[i].motor_id == motor_id)
-                {
-                    motor_info[i].speed = (twai_msg_re.data[2] << 8) | twai_msg_re.data[3];
-                    motor_info[i].current = (twai_msg_re.data[4] << 8) | twai_msg_re.data[5];
-                    motor_info[i].temp = twai_msg_re.data[6];
-
-                    if ((motor_info[i].motor_status == MOTOR_DISCONNECTED) & (current_tick - motor_info[i].last_received < 100))
-                    {
-                        motor_info[i].motor_status = MOTOR_DISABLED_LOCKED;
-                    }
-
-                    ESP_LOGI(TAG_TWAI, "Motor %d State: Speed %d, Current %d, Temp %d .", motor_id, motor_info[i].speed, motor_info[i].current, motor_info[i].temp);
-                }
-            }
-        }
-        else
-        {
-            for (size_t i = 0; i < motor_counts; i++)
-            {
-                // check motor status
-                if (current_tick - motor_info[i].last_received > 1000)
-                {
-                    motor_info[i].motor_status = MOTOR_DISCONNECTED;
-                    ESP_LOGI(TAG_TWAI, "Motor %d disconnected.", motor_info[i].motor_id);
-                }
-            }
-        }
-    }
-
-    /**
-     * @brief FreeRTOS Task: 控制电机运动，同时接受电机状态
-     */
-    static void task_motor(void *args)
-    {
-        Motor *motor_ctrl = (Motor *)args;
-        current_info_t current_info;
-        memset(&current_info, 0, sizeof(current_info_t));
-        while (1)
-        {
-            state_check();
-            for (size_t i = 0; i < motor_counts; i++)
-            {
-                ESP_LOGI(TAG_TWAI, "Motor %d status: %d", motor_info[i].motor_id, motor_info[i].motor_status);
-                // check motor status
-                switch (motor_ctrl->motor_info[i].motor_status)
-                {
-                case MOTOR_DISABLED_LOCKED:
-                case MOTOR_DISCONNECTED:
-                case MOTOR_DISABLED:
-                    set_current(motor_info[i].motor_id, 0, current_info);
-                    break;
-
-                case MOTOR_NORMAL:
-// TODO
-// set_current(pid->PID_CALC(motor_ctrl->motor_info[i].speed));
-#ifdef DEBUG_NO_PID
-                    set_current(motor_info[i].motor_id, DEBUG_NO_PID_CURRENT, current_info);
-#endif
-#ifndef DEBUG_NO_PID
-
-                    set_current(motor_info[i].motor_id, motor_info[i].set_current, current_info);
-                    break;
-#endif
-                default:
-                    break;
-                }
-            }
-            send_motor_current(current_info);
-            // ESP_LOGI(TAG_TWAI, "Current: %d, %d, %d, %d", current_info.iq1, current_info.iq2, current_info.iq3, current_info.iq4);
-            vTaskDelay(1 / portTICK_PERIOD_MS);
-        }
-        vTaskDelete(NULL);
-    };
-
 public:
-    // motor init 。
-    Motor(uint8_t *motor_id, uint8_t motor_counts = 1, gpio_num_t TX_TWAI_GPIO = GPIO_NUM_4, gpio_num_t RX_TWAI_GPIO = GPIO_NUM_5)
+    /**
+     * @brief 初始化电机, 需要手动设置motor_counts, TX和RX的IO口
+     */
+    // TODO
+    Motor(uint8_t *motor_id, uint8_t motor_counts = 1, gpio_num_t TX_TWAI_GPIO = GPIO_NUM_4, gpio_num_t RX_TWAI_GPIO = GPIO_NUM_5, double Kp = 1.0, double Ki = 0.0, double Kd = 0.1) : PIDController(Kp, Ki, Kd)
     {
         this->TX_TWAI_GPIO = TX_TWAI_GPIO;
         this->RX_TWAI_GPIO = RX_TWAI_GPIO;
+
+        PIDController pid(1, 0, 0.1);
 
         twai_timing_config_t timing_config = TWAI_TIMING_CONFIG_1MBITS();
         twai_filter_config_t filter_config = {
@@ -271,7 +191,6 @@ public:
 
         ESP_LOGI("TWAI", "TWAI initialized.");
 
-        // pid = new PID[motor_counts];
         motor_info = new motor_info_t[motor_counts];
         this->motor_counts = motor_counts;
 
@@ -307,7 +226,7 @@ public:
     }
 
     /**
-     * @brief 设置电机ID
+     * @brief 设置电机ID, 使电机ID与motor_info内顺序一致
      * @param index, ID(0-1)
      */
     esp_err_t set_id(uint8_t index, uint8_t id)
@@ -318,6 +237,9 @@ public:
         return ESP_OK;
     }
 
+    /**
+     * @brief 电机状态从DISABLED_LOCKED转换为DISABLED
+     */
     esp_err_t unlock_motor(uint8_t motor_id)
     {
         esp_err_t ret = ESP_ERR_INVALID_ARG;
@@ -356,8 +278,10 @@ public:
         }
     };
 
-    //!!NOT SURE!! set motor speed, state:???
-    esp_err_t set_speed(uint8_t motor_id, int16_t speed) // if locked return ESP_ERR_NOT_SUPPORTED
+    /**
+     * @brief 设置电机速度, 如果电机状态为DISABLED_LOCKED, 则返回ESP_ERR_NOT_SUPPORTED
+     */
+    esp_err_t set_speed(uint8_t motor_id, int16_t speed)
     {
         for (size_t i = 0; i < motor_counts; i++)
         {
@@ -387,7 +311,9 @@ public:
         return ESP_ERR_INVALID_ARG;
     };
 
-    // set speed trace, state:???
+    /**
+     * @brief Breif needed.
+     */
     esp_err_t set_speed_trace(uint8_t motor_id, float amplitude, float omega, float offset)
     {
         for (size_t i = 0; i < motor_counts; i++)
@@ -404,6 +330,124 @@ public:
         // cannot find motor_id
         ESP_LOGI(TAG_TWAI, "Invalid ID.\n");
         return ESP_ERR_INVALID_ARG;
+    };
+
+protected:
+    static motor_info_t *motor_info;
+    static size_t motor_counts;
+
+    /**
+     * @brief 使用CAN获取电机信息: 速度, 电流, 温度; 并更新状态
+     */
+    static void state_check()
+    {
+        static uint32_t current_tick = 0;
+        current_tick = xTaskGetTickCount();
+        ESP_LOGI(TAG_TWAI, "Current tick: %lu", current_tick);
+
+        twai_message_t twai_msg_re;
+
+        // receive队列是否为空
+        if (twai_receive(&twai_msg_re, 100) == ESP_OK)
+        {
+            // 获取电机ID
+            uint8_t motor_id = twai_msg_re.identifier - 0x200;
+
+            for (size_t i = 0; i < motor_counts; i++)
+            {
+                // update reveive time
+                motor_info[i].last_received = xTaskGetTickCount();
+                if (motor_info[i].motor_id == motor_id)
+                {
+                    motor_info[i].speed = (twai_msg_re.data[2] << 8) | twai_msg_re.data[3];
+                    motor_info[i].current = (twai_msg_re.data[4] << 8) | twai_msg_re.data[5];
+                    motor_info[i].temp = twai_msg_re.data[6];
+
+                    // 将DISCONNECTED状态更新为DISABLED_LOCKED状态
+                    if ((motor_info[i].motor_status == MOTOR_DISCONNECTED) & (current_tick - motor_info[i].last_received < 100))
+                    {
+                        motor_info[i].motor_status = MOTOR_DISABLED_LOCKED;
+                    };
+
+                    ESP_LOGI(TAG_TWAI, "Motor %d State: Speed %d, Current %d, Temp %d .", motor_id, motor_info[i].speed, motor_info[i].current, motor_info[i].temp);
+                }
+            }
+        }
+        else
+        {
+            // 接收队列为空则将电机状态更新为DISCONNECTED
+            for (size_t i = 0; i < motor_counts; i++)
+            {
+                // check motor status
+                if (current_tick - motor_info[i].last_received > 1000)
+                {
+                    motor_info[i].motor_status = MOTOR_DISCONNECTED;
+                    ESP_LOGI(TAG_TWAI, "Motor %d disconnected.", motor_info[i].motor_id);
+                }
+            }
+        }
+    }
+
+    /**
+     * @brief FreeRTOS Task: 控制电机运动，同时接受电机状态
+     */
+    static void task_motor(void *args)
+    {
+        Motor *motor_ctrl = (Motor *)args;
+        current_info_t current_info;
+        memset(&current_info, 0, sizeof(current_info_t));
+
+        double PID_CURRENT = 0;
+
+        for (size_t i = 0; i < motor_counts; i++){
+            if(motor_ctrl->motor_info[i].motor_status == MOTOR_NORMAL){
+                PID_CURRENT = motor_ctrl->getValue(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed);
+            }
+        };
+        
+
+        while (1)
+        {
+            state_check();
+            for (size_t i = 0; i < motor_counts; i++)
+            {
+                ESP_LOGI(TAG_TWAI, "Motor %d status: %d", motor_info[i].motor_id, motor_info[i].motor_status);
+
+                // TODO double PID_CURRENT = 0.0f;
+
+                // check motor status
+                switch (motor_ctrl->motor_info[i].motor_status)
+                {
+                case MOTOR_DISABLED_LOCKED:
+                case MOTOR_DISCONNECTED:
+                case MOTOR_DISABLED:
+                    set_current(motor_info[i].motor_id, 0, current_info);
+                    break;
+
+                case MOTOR_NORMAL:
+                    // TODO PID_CURRENT = motor_ctrl->getOutput(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed);
+                    PID_CURRENT = motor_ctrl->getValue(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed);
+                    set_current(motor_info[i].motor_id, PID_CURRENT, current_info);
+/*
+#ifdef DEBUG_NO_PID
+                    set_current(motor_info[i].motor_id, DEBUG_NO_PID_CURRENT, current_info);
+#endif
+#ifndef DEBUG_NO_PID
+
+                    set_current(motor_info[i].motor_id, motor_info[i].set_current, current_info);
+                    break;
+#endif
+*/
+                default:
+
+                    break;
+                }
+            }
+            send_motor_current(current_info);
+            ESP_LOGI(TAG_TWAI, "Current: %d, %d, %d, %d", current_info.iq1, current_info.iq2, current_info.iq3, current_info.iq4);
+            vTaskDelay(1 / portTICK_PERIOD_MS);
+        }
+        vTaskDelete(NULL);
     };
 };
 
