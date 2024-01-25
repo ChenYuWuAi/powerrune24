@@ -6,8 +6,7 @@
  * @author CH
  * @note 改编自官方示例
  */
-// LED_WS2812B相关库
-#define ENABLE_DMA
+#define ENABLE_DMA // S3库需要使能该宏定义，C3库不需要
 
 #include "esp_log.h"
 #include "esp_err.h"
@@ -19,8 +18,8 @@
 
 #include <string.h>
 
-// TAG 仅在本文件中有效
-const char *TAG_LED = "LED_Strip";
+// 调试标签
+const char *TAG_LED_STRIP = "LED_Strip";
 
 struct LED_color_info_t
 {
@@ -35,8 +34,8 @@ private:
     static rmt_channel_handle_t LED_tx_channel_handle;
     static uint8_t LED_Strip_num;
     static LED_Strip *LED_Strip_instance;
-    rmt_transmit_config_t tx_config;
-    rmt_encoder_handle_t led_encoder;
+    static rmt_transmit_config_t tx_config;
+    static rmt_encoder_handle_t led_encoder;
     typedef struct
     {
         rmt_encoder_t base;
@@ -131,14 +130,14 @@ private:
         rmt_copy_encoder_config_t copy_encoder_config = {};
 
         led_encoder = (rmt_led_strip_encoder_t *)calloc(1, sizeof(rmt_led_strip_encoder_t));
-        ESP_GOTO_ON_FALSE(led_encoder, ESP_ERR_NO_MEM, err, TAG_LED, "no mem for led strip encoder");
+        ESP_GOTO_ON_FALSE(led_encoder, ESP_ERR_NO_MEM, err, TAG_LED_STRIP, "no mem for led strip encoder");
 
         led_encoder->base.encode = rmt_encode_led_strip;
         led_encoder->base.del = rmt_del_led_strip_encoder;
         led_encoder->base.reset = rmt_led_strip_encoder_reset;
 
-        ESP_GOTO_ON_ERROR(rmt_new_bytes_encoder(&bytes_encoder_config, &led_encoder->bytes_encoder), err, TAG_LED, "create bytes encoder failed");
-        ESP_GOTO_ON_ERROR(rmt_new_copy_encoder(&copy_encoder_config, &led_encoder->copy_encoder), err, TAG_LED, "create copy encoder failed");
+        ESP_GOTO_ON_ERROR(rmt_new_bytes_encoder(&bytes_encoder_config, &led_encoder->bytes_encoder), err, TAG_LED_STRIP, "create bytes encoder failed");
+        ESP_GOTO_ON_ERROR(rmt_new_copy_encoder(&copy_encoder_config, &led_encoder->copy_encoder), err, TAG_LED_STRIP, "create copy encoder failed");
 
         led_encoder->reset_code = {0, reset_ticks, 0, reset_ticks};
         *ret_encoder = &led_encoder->base;
@@ -170,10 +169,12 @@ public:
     LED_color_info_t &operator[](uint16_t index);
     // 全链同颜色
     esp_err_t set_color(uint8_t red, uint8_t green, uint8_t blue);
+    esp_err_t set_color(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness);
     // 单灯颜色
     esp_err_t set_color(uint16_t index, uint8_t red, uint8_t green, uint8_t blue);
+    esp_err_t set_color(uint16_t index, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness);
     esp_err_t refresh(uint8_t block = 1);
-    esp_err_t clear_pixel();
+    esp_err_t clear_pixels();
     esp_err_t set_brightness_filter(uint8_t brightness);
 
     ~LED_Strip();
@@ -181,15 +182,17 @@ public:
 
 rmt_channel_handle_t LED_Strip::LED_tx_channel_handle = NULL;
 uint8_t LED_Strip::LED_Strip_num = 0;
+rmt_transmit_config_t LED_Strip::tx_config;
+rmt_encoder_handle_t LED_Strip::led_encoder;
 
 LED_Strip::LED_Strip(gpio_num_t io_num, uint16_t LED_Strip_length)
 {
     this->LED_Strip_length = LED_Strip_length;
     // malloc
     this->LED_Strip_color = new LED_color_info_t[LED_Strip_length];
+    memset(this->LED_Strip_color, 0, sizeof(LED_color_info_t) * LED_Strip_length);
     if (LED_Strip_num == 0)
     {
-        memset(this->LED_Strip_color, 0, sizeof(LED_color_info_t) * LED_Strip_length);
 #ifdef ENABLE_DMA
         rmt_tx_channel_config_t tx_chan_config = {
             .gpio_num = io_num,
@@ -213,13 +216,13 @@ LED_Strip::LED_Strip(gpio_num_t io_num, uint16_t LED_Strip_length)
             .loop_count = 0, // no transfer loop
         };
 
-        ESP_LOGI(TAG_LED, "Initialzing LED_Strip Driver");
+        ESP_LOGI(TAG_LED_STRIP, "Initialzing LED_Strip Driver");
         ESP_ERROR_CHECK(rmt_new_tx_channel(&tx_chan_config, &LED_tx_channel_handle));
 
-        ESP_LOGI(TAG_LED, "Installing LED_Strip encoder");
+        ESP_LOGI(TAG_LED_STRIP, "Installing LED_Strip encoder");
         ESP_ERROR_CHECK(rmt_new_led_strip_encoder(&led_encoder));
 
-        ESP_LOGI(TAG_LED, "Enabling RMT TX channel");
+        ESP_LOGI(TAG_LED_STRIP, "Enabling RMT TX channel");
         ESP_ERROR_CHECK(rmt_enable(LED_tx_channel_handle));
     }
     LED_Strip_num++;
@@ -245,6 +248,17 @@ esp_err_t LED_Strip::set_color(uint8_t red, uint8_t green, uint8_t blue)
     return ESP_OK;
 }
 
+esp_err_t LED_Strip::set_color(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness)
+{
+    for (uint16_t i = 0; i < this->LED_Strip_length; i++)
+    {
+        this->LED_Strip_color[i].green = green * brightness / 255.0;
+        this->LED_Strip_color[i].red = red * brightness / 255.0;
+        this->LED_Strip_color[i].blue = blue * brightness / 255.0;
+    }
+    return ESP_OK;
+}
+
 esp_err_t LED_Strip::set_color(uint16_t index, uint8_t red, uint8_t green, uint8_t blue)
 {
     if (index >= this->LED_Strip_length)
@@ -257,15 +271,28 @@ esp_err_t LED_Strip::set_color(uint16_t index, uint8_t red, uint8_t green, uint8
     return ESP_OK;
 }
 
+esp_err_t LED_Strip::set_color(uint16_t index, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness)
+{
+    if (index >= this->LED_Strip_length)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    this->LED_Strip_color[index].red = red * brightness / 255.0;
+    this->LED_Strip_color[index].green = green * brightness / 255.0;
+    this->LED_Strip_color[index].blue = blue * brightness / 255.0;
+    return ESP_OK;
+}
+
 esp_err_t LED_Strip::refresh(uint8_t block) // 默认阻塞
 {
+    rmt_encoder_reset(led_encoder);
     ESP_ERROR_CHECK(rmt_transmit(LED_tx_channel_handle, led_encoder, LED_Strip_color, 3 * LED_Strip_length, &tx_config));
     if (block)
         ESP_ERROR_CHECK(rmt_tx_wait_all_done(LED_tx_channel_handle, portMAX_DELAY));
     return ESP_OK;
 }
 
-esp_err_t LED_Strip::clear_pixel()
+esp_err_t LED_Strip::clear_pixels()
 {
     for (uint16_t i = 0; i < this->LED_Strip_length; i++)
     {

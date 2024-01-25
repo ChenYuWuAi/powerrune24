@@ -28,7 +28,7 @@ Function List:  void task_motor(void *args)
 #include <esp_err.h>
 #include <math.h>
 #include <esp_log.h>
-// #include "simple_pid.h"
+#include "MiniPID.h"
 
 #define DEBUG_NO_PID
 #define DEBUG_NO_PID_CURRENT 250

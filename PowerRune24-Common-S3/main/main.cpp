@@ -11,37 +11,108 @@
 #include <freertos/task.h>
 #include <esp_event_loop.h>
 #include <LED_Strip.h>
+#include <LED.h>
 #include <DEMUX.h>
+#include <driver/gpio.h>
 
-const char *TAG = "main";
+const char *TAG = "Unit Test";
+
+// 测试LED_Strip
+LED_Strip LED_Strip_0(GPIO_NUM_11, 301);
+LED_Strip LED_Strip_1(GPIO_NUM_11, 86);
+LED_Strip LED_Strip_2(GPIO_NUM_11, 86);
+
+gpio_num_t DEMUX_IO[3] = {GPIO_NUM_14, GPIO_NUM_21, GPIO_NUM_38};
+gpio_num_t DEMUX_IO_enable = GPIO_NUM_13;
+DEMUX<3> DEMUX_LED(DEMUX_IO, DEMUX_IO_enable);
+
+// LED update task for 3 LED strips
+void LED_update_task(void *pvParameter)
+{
+
+    while (1)
+    {
+        DEMUX_LED = 0;
+        LED_Strip_0.refresh();
+        DEMUX_LED = 1;
+        LED_Strip_1.refresh();
+        DEMUX_LED = 2;
+        LED_Strip_2.refresh();
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+}
 
 extern "C" void app_main(void)
 {
     // 在此编写单元测试代码
-    ESP_LOGI("main", "Unit Test Start");
+    ESP_LOGI(TAG, "Unit Test Start");
+
+    // LED Blink Code
+    LED blink(GPIO_NUM_48, 1, 2, 3);
+
+    // GPIO 0 for test
+    gpio_config_t io_conf;
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.pin_bit_mask = 1ULL << GPIO_NUM_0;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+    gpio_config(&io_conf);
 
     // 测试DEMUX
     // GPIO14/21/38, GPIO13
     // LSB - - - MSB, EN
-    // gpio_num_t DEMUX_IO[3] = {GPIO_NUM_14, GPIO_NUM_21, GPIO_NUM_38};
-    // gpio_num_t DEMUX_IO_enable = GPIO_NUM_13;
-    // DEMUX<3> DEMUX_LED(DEMUX_IO, DEMUX_IO_enable);
+    DEMUX_LED.enable();
+    DEMUX_LED = 0;
 
-    // DEMUX_LED.enable();
-    // DEMUX_LED = 1;
+    // // Red
+    // LED_color_info_t LED_Red;
+    // LED_Red = {0, 255, 0};
 
-    // 测试LED_Strip
-    LED_Strip LED_Strip_1(GPIO_NUM_10, 49);
-    LED_color_info_t LED_Blue;
-    LED_Blue = {0, 0, 255};
-    for (int i = 0; i < 50; i++)
+    // // Green
+    // LED_color_info_t LED_Green;
+    // LED_Green = {255, 0, 0};
+
+    // // Blue
+    // LED_color_info_t LED_Blue;
+    // LED_Blue = {0, 0, 255};
+
+    // create task
+    TaskHandle_t LED_update_task_handle;
+    xTaskCreate(&LED_update_task, "LED_update_task", 2048, NULL, 5, &LED_update_task_handle);
+
+    while (1)
     {
-        memcpy(&LED_Strip_1[i], &LED_Blue, sizeof(LED_color_info_t));
+        // fade in&out
+        for (int i = 0; i < 128; i++)
+        {
+            LED_Strip_0.set_color(0, 0, i);
+            LED_Strip_1.set_color(0, 0, i);
+            LED_Strip_2.set_color(0, 0, i);
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
+        for (int i = 128; i > 0; i--)
+        {
+            LED_Strip_0.set_color(0, 0, i);
+            LED_Strip_1.set_color(0, 0, i);
+            LED_Strip_2.set_color(0, 0, i);
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
     }
-    LED_Strip_1.set_brightness_filter(10);
 
-    LED_Strip_1.refresh();
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-    ESP_LOGI("main", "Unit Test End");
+    vTaskDelete(LED_update_task_handle);
+
+    // clear
+    LED_Strip_0.clear_pixels();
+    LED_Strip_1.clear_pixels();
+    LED_Strip_2.clear_pixels();
+    DEMUX_LED = 0;
+    LED_Strip_0.refresh();
+    DEMUX_LED = 1;
+    LED_Strip_1.refresh();
+    DEMUX_LED = 2;
+    LED_Strip_2.refresh();
+
+    ESP_LOGI(TAG, "Unit Test End");
 }
