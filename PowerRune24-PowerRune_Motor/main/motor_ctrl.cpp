@@ -7,11 +7,34 @@
 #include <driver/twai.h>
 #include <esp_err.h>
 #include <esp_log.h>
-#include "event_source.h"
-#include "esp_event_base.h"
+#include <esp_event_base.h>
+#include "PowerRune_Events.h"
 #include "motor_ctrl.h"
 
-// event TAG
+// ESP_EVENT_DECLARE_BASE(PRM);
+// enum
+// {
+//     PRM_UNLOCK_EVENT,
+//     PRM_UNLOCK_DONE_EVENT,
+//     PRM_START_EVENT,
+//     PRM_START_DONE_EVENT,
+//     PRM_SPEED_STABLE_EVENT,
+//     PRM_STOP_EVENT,
+//     PRM_DISCONNECT_EVENT, 
+// };
+
+// typedef enum
+// {
+//     MOTOR_DISCONNECTED,
+//     MOTOR_DISABLED_LOCKED,
+//     MOTOR_DISABLED,
+//     MOTOR_NORMAL,
+//     MOTOR_NORMAL_PENDING,
+//     MOTOR_TRACE_SIN_PENDING,
+//     MOTOR_TRACE_SIN_STABLE,
+// } motor_status_t;
+
+// event loop TAG
 static const char* TAG = "PRM";
 
 // create event loop with task PRM
@@ -24,6 +47,44 @@ static void check_loop(void* handler_args, esp_event_base_t base, int32_t id, vo
     ESP_LOGI(TAG, "Event in loop: %p ", loop);
 };
 
+// define event base
+// ESP_EVENT_DEFINE_BASE(PRM);
+
+// define event base handler function
+static void PRM_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
+{
+    if (base == PRM)
+    {
+        switch (id)
+        {
+        case PRM_UNLOCK_EVENT:
+            ESP_LOGI(TAG, "PRM_UNLOCK_EVENT");
+            break;
+        case PRM_UNLOCK_DONE_EVENT:
+            ESP_LOGI(TAG, "PRM_UNLOCK_DONE_EVENT");
+            break;
+        case PRM_SPEED_STABLE_EVENT:
+            ESP_LOGI(TAG, "PRM_SPEED_STABLE_EVENT");
+            break;
+        case PRM_START_EVENT:
+            ESP_LOGI(TAG, "PRM_START_EVENT");
+            break;
+        case PRM_START_DONE_EVENT:
+            ESP_LOGI(TAG, "PRM_START_DONE_EVENT");
+            break;
+        case PRM_STOP_EVENT:
+            ESP_LOGI(TAG, "PRM_STOP_EVENT");
+            break;
+        case PRM_DISCONNECT_EVENT:
+            ESP_LOGI(TAG, "PRM_DISCONNECT_EVENT");
+            break;
+        default:
+            break;
+        }
+    }
+};
+
+
 extern "C" void app_main(void)
 {
     uint8_t motor_counts = 1; // 电机数量
@@ -34,6 +95,9 @@ extern "C" void app_main(void)
     Motor motor_3508(id, motor_counts, GPIO_NUM_4, GPIO_NUM_5);
     motor_3508.unlock_motor(1);
     motor_3508.set_speed(1, 2000);
+
+    ESP_LOGI(TAG, "setting up");
+
     // set event loop args
     esp_event_loop_args_t loop_with_PRM_args = {
         .queue_size = 5,
@@ -47,21 +111,6 @@ extern "C" void app_main(void)
     // {
     //     vTaskDelay(1000 / portTICK_PERIOD_MS);
     // }
-
-    // ESP_LOGI(TAG, "setting up");
-
-    // esp_event_loop_args_t loop_with_task_args = {
-    //     .queue_size = 5,
-    //     .task_name = "PowerruneMotor", // task will be created
-    //     .task_priority = uxTaskPriorityGet(NULL),
-    //     .task_stack_size = 3072,
-    //     .task_core_id = tskNO_AFFINITY
-    // };
-
-    // esp_event_loop_args_t loop_without_task_args = {
-    //     .queue_size = 5,
-    //     .task_name = NULL // no task will be created
-    // };
 
     // // Create the event loops
     // ESP_ERROR_CHECK(esp_event_loop_create(&loop_with_task_args, &loop_with_task));
