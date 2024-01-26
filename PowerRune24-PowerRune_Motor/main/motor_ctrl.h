@@ -59,6 +59,9 @@ typedef enum
     // 运转中
     MOTOR_NORMAL,
 
+    //速度正在改变中
+    MOTOR_NORMAL_PENDING,
+
     // state: 电机启动需要时间, 到达正弦转速后启动LED,
     // 此时进入MOTOR_TRACE_SIN_PENDING状态
     MOTOR_TRACE_SIN_PENDING,

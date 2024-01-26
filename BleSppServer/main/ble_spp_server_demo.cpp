@@ -1,11 +1,12 @@
 // led
 #include <stdio.h>
 #include "driver/gpio.h"
-#include "led_strip.h"
+#include "LED_Strip.h"
 #include "sdkconfig.h"
 
 // event loop
 #include "event_source.h"
+#include "PowerRune_Events.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -30,42 +31,64 @@
 #define ESP_SPP_APP_ID 0x56
 #define SAMPLE_DEVICE_NAME "ESP_SPP_SERVER" // The Device Name Characteristics in GAP
 
-//服务注册ID
+// 服务注册ID
 #define SPP_SVC_INST_ID 0
 #define OPS_SVC_INST_ID 1
 
 // SPP Service(系统参数设置服务)的UUID
-static const uint16_t spp_service_uuid = 0x1827;//Mesh Proxy Service
+static const uint16_t spp_service_uuid = 0x1827; // Mesh Proxy Service
 // 特征值的UUID
-#define UUID_LED        0x2A77// Irradiance(supportled)
-#define UUID_URL        0x2AA6// Central Address Resoluton
-#define UUID_MAC        0x2AC9// Resolvable Private Address Only
-#define UUID_SSID       0x2AC3// Object ID
-#define UUID_Wifi       0x2A3E// Network Availability
-#define UUID_AOTA       0x2AC5// Object Action Control Point
-#define UUID_LIT        0x2A0D// DST Offset
-#define UUID_STRIP_LIT  0x2A01// Appearance
-#define UUID_R_LIT      0x2A9B// Body Composition Feature
-#define UUID_MATRIX_LIT 0x2A9C// Body Composition Measurement
-#define UUID_PID        0x2A66// Cycling Power Control Point
-#define UUID_ARMOR_ID   0x2B1F// Reconnection Configuration Control Point
+#define UUID_LED 0xABF0        // supportled
+#define UUID_URL 0x2AA6        // Central Address Resoluton
+#define UUID_MAC 0x2AC9        // Resolvable Private Address Only
+#define UUID_SSID 0x2AC3       // Object ID
+#define UUID_Wifi 0x2A3E       // Network Availability
+#define UUID_AOTA 0x2AC5       // Object Action Control Point
+#define UUID_LIT 0x2A0D        // DST Offset
+#define UUID_STRIP_LIT 0x2A01  // Appearance
+#define UUID_R_LIT 0x2A9B      // Body Composition Feature
+#define UUID_MATRIX_LIT 0x2A9C // Body Composition Measurement
+#define UUID_PID 0x2A66        // Cycling Power Control Point
+#define UUID_ARMOR_ID 0x2B1F   // Reconnection Configuration Control Point
 
 // 大符操作服务的UUID
 static const uint16_t ops_service_uuid = 0x1828;
 // 特征值的UUID
-#define UUID_RUN        0x2A65// Cycling Power Control Feature
-#define UUID_GPA        0x2A69// Position Quality
-#define UUID_UNLK       0x2A3B// Service Required
-#define UUID_STOP       0x2AC8// Object Changed
-#define UUID_OTA        0x2A9F// User Control Point
+#define UUID_RUN 0x2A65  // Cycling Power Control Feature
+#define UUID_GPA 0x2A69  // Position Quality
+#define UUID_UNLK 0x2A3B // Service Required
+#define UUID_STOP 0x2AC8 // Object Changed
+#define UUID_OTA 0x2A9F  // User Control Point
 
-static const uint8_t spp_adv_data[23] = {
+// LED_Strip
+LED_Strip LED_Strip_0(GPIO_NUM_10, 49);
+
+static const uint8_t spp_adv_data[20] = {
     /* Flags */
-    0x02, 0x01, 0x06,
+    0x02,
+    0x01,
+    0x06,
     /* Complete List of 16-bit Service Class UUIDs */
-    0x03, 0x03, 0xF0, 0xAB,
+    0x03,
+    0x03,
+    0xF0,
+    0xAB,
     /* Complete Local Name in advertising */
-    0x0F, 0x09, 'E', 'S', 'P', '_', 'S', 'P', 'P', '_', 'S', 'E', 'R', 'V', 'E', 'R'};
+    // PowerRune24
+    0x0B,
+    0x09,
+    'P',
+    'o',
+    'w',
+    'e',
+    'r',
+    'R',
+    'u',
+    'n',
+    'e',
+    '2',
+    '4',
+};
 
 static uint16_t spp_mtu_size = 23;
 static uint16_t spp_conn_id = 0xffff;
@@ -130,14 +153,14 @@ static spp_receive_data_buff_t SppRecvDataBuff = {
     .buff_size = 0,
     .first_node = NULL};
 
-static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
+extern "C" void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 
 /* One gatt-based profile one app_id and one gatts_if, this array will store the gatts_if returned by ESP_GATTS_REG_EVT */
-//服务端APP注册结构表
+// 服务端APP注册结构表
 static struct gatts_profile_inst spp_profile_tab[SPP_PROFILE_NUM] = {
     [SPP_PROFILE_APP_IDX] = {
-        .gatts_cb = gatts_profile_event_handler,//回调函数
-        .gatts_if = ESP_GATT_IF_NONE, /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
+        .gatts_cb = gatts_profile_event_handler, // 回调函数
+        .gatts_if = ESP_GATT_IF_NONE,            /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
     },
 };
 
@@ -155,515 +178,416 @@ static const uint8_t char_prop_read = ESP_GATT_CHAR_PROP_BIT_READ;
 static const uint8_t char_prop_write_notify = ESP_GATT_CHAR_PROP_BIT_WRITE_NR | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
 static const uint8_t char_prop_read_write_notify = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_WRITE_NR | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
 
-//系统参数设置服务的属性表的相关全局变量
-//led
-static const uint16_t spp_led_uuid = UUID_LED;       // 设置led的uuid
-static const u_int8_t spp_led_val[1] = {0};          // led的状态（value）只有一个值
-static const uint8_t spp_led_ccc[2] = {0};
-//url
+// 系统参数设置服务的属性表的相关全局变量
+// url
 static const uint16_t url_uuid = UUID_URL;
-static const u_int8_t url_val[20] = {0};
+static const u_int8_t url_val[1] = {0};
 static const uint8_t url_ccc[2] = {0};
-//mac
+// mac
 static const uint16_t mac_uuid = UUID_MAC;
 static const u_int8_t mac_val[1] = {0};
 static const uint8_t mac_ccc[2] = {0};
-//ssid
+// ssid
 static const uint16_t ssid_uuid = UUID_SSID;
 static const u_int8_t ssid_val[1] = {0};
 static const uint8_t ssid_ccc[2] = {0};
-//wifi
+// wifi
 static const uint16_t wifi_uuid = UUID_Wifi;
 static const u_int8_t wifi_val[1] = {0};
 static const uint8_t wifi_ccc[2] = {0};
-//aota
+// aota
 static const uint16_t aota_uuid = UUID_AOTA;
 static const u_int8_t aota_val[1] = {0};
 static const uint8_t aota_ccc[2] = {0};
-//lit
+// lit
 static const uint16_t lit_uuid = UUID_LIT;
 static const u_int8_t lit_val[1] = {0};
 static const uint8_t lit_ccc[2] = {0};
-//strip_lit
+// strip_lit
 static const uint16_t strip_lit_uuid = UUID_STRIP_LIT;
 static const u_int8_t strip_lit_val[1] = {0};
 static const uint8_t strip_lit_ccc[2] = {0};
-//r_lit
+// r_lit
 static const uint16_t r_lit_uuid = UUID_R_LIT;
 static const u_int8_t r_lit_val[1] = {0};
 static const uint8_t r_lit_ccc[2] = {0};
-//matrix_lit
+// matrix_lit
 static const uint16_t matrix_lit_uuid = UUID_MATRIX_LIT;
 static const u_int8_t matrix_lit_val[1] = {0};
 static const uint8_t matrix_lit_ccc[2] = {0};
-//pid
+// pid
 static const uint16_t pid_uuid = UUID_PID;
 static const u_int8_t pid_val[1] = {0};
 static const uint8_t pid_ccc[2] = {0};
-//armor_id
+// armor_id
 static const uint16_t armor_id_uuid = UUID_ARMOR_ID;
 static const u_int8_t armor_id_val[1] = {0};
 static const uint8_t armor_id_ccc[2] = {0};
 
-//系统参数设置服务的属性表
+// 系统参数设置服务的属性表
 static const esp_gatts_attr_db_t spp_gatt_db[SPP_IDX_NB] = {
     // SPP -  Service Declaration
     [SPP_IDX_SVC] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&primary_service_uuid, ESP_GATT_PERM_READ, sizeof(spp_service_uuid), sizeof(spp_service_uuid), (uint8_t *)&spp_service_uuid}},
+                     {ESP_UUID_LEN_16, (uint8_t *)&primary_service_uuid, ESP_GATT_PERM_READ, sizeof(spp_service_uuid), sizeof(spp_service_uuid), (uint8_t *)&spp_service_uuid}},
 
-    //led
-    [LED_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
-
-    [LED_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&spp_led_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(spp_led_val), sizeof(spp_led_val), (uint8_t *)spp_led_val}},
-
-    [LED_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(spp_led_ccc), (uint8_t *)spp_led_ccc}},
-
-    //url
+    // url
     [URL_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
     [URL_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&url_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(url_val), sizeof(url_val), (uint8_t *)url_val}},
+                 {ESP_UUID_LEN_16, (uint8_t *)&url_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(url_val), sizeof(url_val), (uint8_t *)url_val}},
 
     [URL_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(url_ccc), (uint8_t *)url_ccc}},
+                 {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(url_ccc), (uint8_t *)url_ccc}},
 
-    //mac
+    // mac
     [MAC_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
     [MAC_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&mac_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(mac_val), sizeof(mac_val), (uint8_t *)mac_val}},
+                 {ESP_UUID_LEN_16, (uint8_t *)&mac_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(mac_val), sizeof(mac_val), (uint8_t *)mac_val}},
 
     [MAC_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(mac_ccc), (uint8_t *)mac_ccc}},
-    
-    //ssid
+                 {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(mac_ccc), (uint8_t *)mac_ccc}},
+
+    // ssid
     [SSID_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+                   {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
     [SSID_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&ssid_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(ssid_val), sizeof(ssid_val), (uint8_t *)ssid_val}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&ssid_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(ssid_val), sizeof(ssid_val), (uint8_t *)ssid_val}},
 
     [SSID_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(ssid_ccc), (uint8_t *)ssid_ccc}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(ssid_ccc), (uint8_t *)ssid_ccc}},
 
-    //wifi
+    // wifi
     [Wifi_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+                   {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
     [Wifi_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&wifi_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(wifi_val), sizeof(wifi_val), (uint8_t *)wifi_val}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&wifi_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(wifi_val), sizeof(wifi_val), (uint8_t *)wifi_val}},
 
     [Wifi_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(wifi_ccc), (uint8_t *)wifi_ccc}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(wifi_ccc), (uint8_t *)wifi_ccc}},
 
-    //aota
+    // aota
     [AOTA_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+                   {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
     [AOTA_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&aota_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(aota_val), sizeof(aota_val), (uint8_t *)aota_val}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&aota_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(aota_val), sizeof(aota_val), (uint8_t *)aota_val}},
 
     [AOTA_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(aota_ccc), (uint8_t *)aota_ccc}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(aota_ccc), (uint8_t *)aota_ccc}},
 
-    //lit
+    // lit
     [LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
     [LIT_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(lit_val), sizeof(lit_val), (uint8_t *)lit_val}},
+                 {ESP_UUID_LEN_16, (uint8_t *)&lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(lit_val), sizeof(lit_val), (uint8_t *)lit_val}},
 
     [LIT_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(lit_ccc), (uint8_t *)lit_ccc}},
+                 {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(lit_ccc), (uint8_t *)lit_ccc}},
 
-    //strip_lit
+    // strip_lit
     [STRIP_LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+                        {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
     [STRIP_LIT_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&strip_lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(strip_lit_val), sizeof(strip_lit_val), (uint8_t *)strip_lit_val}},
+                       {ESP_UUID_LEN_16, (uint8_t *)&strip_lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(strip_lit_val), sizeof(strip_lit_val), (uint8_t *)strip_lit_val}},
 
     [STRIP_LIT_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(strip_lit_ccc), (uint8_t *)strip_lit_ccc}},
+                       {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(strip_lit_ccc), (uint8_t *)strip_lit_ccc}},
 
-    //r_lit
+    // r_lit
     [R_LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+                    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
     [R_LIT_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&r_lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(r_lit_val), sizeof(r_lit_val), (uint8_t *)r_lit_val}},
+                   {ESP_UUID_LEN_16, (uint8_t *)&r_lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(r_lit_val), sizeof(r_lit_val), (uint8_t *)r_lit_val}},
 
     [R_LIT_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(r_lit_ccc), (uint8_t *)r_lit_ccc}},
+                   {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(r_lit_ccc), (uint8_t *)r_lit_ccc}},
 
-    //matrix_lit
+    // matrix_lit
     [MATRIX_LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+                         {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
     [MATRIX_LIT_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&matrix_lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(matrix_lit_val), sizeof(matrix_lit_val), (uint8_t *)matrix_lit_val}},
+                        {ESP_UUID_LEN_16, (uint8_t *)&matrix_lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(matrix_lit_val), sizeof(matrix_lit_val), (uint8_t *)matrix_lit_val}},
 
     [MATRIX_LIT_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(matrix_lit_ccc), (uint8_t *)matrix_lit_ccc}},
+                        {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(matrix_lit_ccc), (uint8_t *)matrix_lit_ccc}},
 
-    //pid
+    // pid
     [PID_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
     [PID_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&pid_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(pid_val), sizeof(pid_val), (uint8_t *)pid_val}},
+                 {ESP_UUID_LEN_16, (uint8_t *)&pid_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(pid_val), sizeof(pid_val), (uint8_t *)pid_val}},
 
     [PID_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(pid_ccc), (uint8_t *)pid_ccc}},
+                 {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(pid_ccc), (uint8_t *)pid_ccc}},
 
-    //armor_id
+    // armor_id
     [ARMOR_ID_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+                       {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
     [ARMOR_ID_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&armor_id_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(armor_id_val), sizeof(armor_id_val), (uint8_t *)armor_id_val}},
+                      {ESP_UUID_LEN_16, (uint8_t *)&armor_id_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(armor_id_val), sizeof(armor_id_val), (uint8_t *)armor_id_val}},
 
     [ARMOR_ID_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(armor_id_ccc), (uint8_t *)armor_id_ccc}},
+                      {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(armor_id_ccc), (uint8_t *)armor_id_ccc}},
 };
 
-//大符操作服务的属性表的相关全局变量
-//run
+// 大符操作服务的属性表的相关全局变量
+// run
 static const uint16_t ops_run_uuid = UUID_RUN;
-static const u_int8_t ops_run_val[1] = {0};
+static const u_int8_t ops_run_val[3] = {0};
 static const uint8_t ops_run_ccc[2] = {0};
-//gpa
+// gpa
 static const uint16_t ops_gpa_uuid = UUID_GPA;
 static const u_int8_t ops_gpa_val[1] = {0};
 
-//unlk
+// unlk
 static const uint16_t ops_unlk_uuid = UUID_UNLK;
 static const u_int8_t ops_unlk_val[1] = {0};
 static const uint8_t ops_unlk_ccc[2] = {0};
 
-//stop
+// stop
 static const uint16_t ops_stop_uuid = UUID_STOP;
 static const u_int8_t ops_stop_val[1] = {0};
 static const uint8_t ops_stop_ccc[2] = {0};
 
-//ota
+// ota
 static const uint16_t ops_ota_uuid = UUID_OTA;
 static const u_int8_t ops_ota_val[1] = {0};
 static const uint8_t ops_ota_ccc[2] = {0};
 
-//大符操作服务的属性表                       添加属性表下标
+// 大符操作服务的属性表                       添加属性表下标
 static const esp_gatts_attr_db_t ops_gatt_db[OPS_IDX_NB] = {
     // OPS -  Service Declaration
     [OPS_IDX_SVC] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&primary_service_uuid, ESP_GATT_PERM_READ, sizeof(ops_service_uuid), sizeof(ops_service_uuid), (uint8_t *)&ops_service_uuid}},
+                     {ESP_UUID_LEN_16, (uint8_t *)&primary_service_uuid, ESP_GATT_PERM_READ, sizeof(ops_service_uuid), sizeof(ops_service_uuid), (uint8_t *)&ops_service_uuid}},
 
-    //run
+    // run
     [RUN_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_write_notify}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_write_notify}},
 
     [RUN_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&ops_run_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(ops_run_val), sizeof(ops_run_val), (uint8_t *)ops_run_val}},
+                 {ESP_UUID_LEN_16, (uint8_t *)&ops_run_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(ops_run_val), sizeof(ops_run_val), (uint8_t *)ops_run_val}},
 
     [RUN_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(ops_run_ccc), (uint8_t *)ops_run_ccc}},
+                 {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(ops_run_ccc), (uint8_t *)ops_run_ccc}},
 
-    //gpa
+    // gpa
     [GPA_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read}},
 
     [GPA_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&ops_gpa_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(ops_gpa_val), sizeof(ops_gpa_val), (uint8_t *)ops_gpa_val}},
+                 {ESP_UUID_LEN_16, (uint8_t *)&ops_gpa_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(ops_gpa_val), sizeof(ops_gpa_val), (uint8_t *)ops_gpa_val}},
 
-    //unlk
+    // unlk
     [UNLK_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_write_notify}},
+                   {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_write_notify}},
 
     [UNLK_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&ops_unlk_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(ops_unlk_val), sizeof(ops_unlk_val), (uint8_t *)ops_unlk_val}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&ops_unlk_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(ops_unlk_val), sizeof(ops_unlk_val), (uint8_t *)ops_unlk_val}},
 
     [UNLK_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(ops_unlk_ccc), (uint8_t *)ops_unlk_ccc}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(ops_unlk_ccc), (uint8_t *)ops_unlk_ccc}},
 
-    //stop
+    // stop
     [STOP_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_write_notify}},
+                   {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_write_notify}},
 
     [STOP_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&ops_stop_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(ops_stop_val), sizeof(ops_stop_val), (uint8_t *)ops_stop_val}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&ops_stop_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(ops_stop_val), sizeof(ops_stop_val), (uint8_t *)ops_stop_val}},
 
     [STOP_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(ops_stop_ccc), (uint8_t *)ops_stop_ccc}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(ops_stop_ccc), (uint8_t *)ops_stop_ccc}},
 
-    //ota
+    // ota
     [OTA_CHAR] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_write_notify}},
+                  {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_write_notify}},
 
     [OTA_VAL] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&ops_ota_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(ops_ota_val), sizeof(ops_ota_val), (uint8_t *)ops_ota_val}},
+                 {ESP_UUID_LEN_16, (uint8_t *)&ops_ota_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(ops_ota_val), sizeof(ops_ota_val), (uint8_t *)ops_ota_val}},
 
     [OTA_CFG] = {{ESP_GATT_AUTO_RSP},
-    {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(ops_ota_ccc), (uint8_t *)ops_ota_ccc}},
+                 {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(ops_ota_ccc), (uint8_t *)ops_ota_ccc}},
 };
-
-// 定义events
-//spp服务
-ESP_EVENT_DEFINE_BASE(LED_EVENTS);
-ESP_EVENT_DEFINE_BASE(URL_EVENTS);
-ESP_EVENT_DEFINE_BASE(MAC_EVENTS);
-ESP_EVENT_DEFINE_BASE(SSID_EVENTS);
-ESP_EVENT_DEFINE_BASE(Wifi_EVENTS);
-ESP_EVENT_DEFINE_BASE(AOTA_EVENTS);
-ESP_EVENT_DEFINE_BASE(LIT_EVENTS);
-ESP_EVENT_DEFINE_BASE(STRIP_LIT_EVENTS);
-ESP_EVENT_DEFINE_BASE(R_LIT_EVENTS);
-ESP_EVENT_DEFINE_BASE(MATRIX_LIT_EVENTS);
-ESP_EVENT_DEFINE_BASE(PID_EVENTS);
-ESP_EVENT_DEFINE_BASE(ARMOR_ID_EVENTS);
-//ops服务
-ESP_EVENT_DEFINE_BASE(RUN_EVENTS);
-ESP_EVENT_DEFINE_BASE(GPA_EVENTS);
-ESP_EVENT_DEFINE_BASE(UNLK_EVENTS);
-ESP_EVENT_DEFINE_BASE(STOP_EVENTS);
-ESP_EVENT_DEFINE_BASE(OTA_EVENTS);
 
 // event loop中的handle
 // Handler which executes when the ble started event gets executed by the loop.
-//spp服务
-static void ble_led_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
-{
-    // int num = *((int*) handler_args);
+// spp服务
 
-    static int led_state = 0;
-    if (led_state)
-        gpio_set_level(2, 0);
-    else
-        gpio_set_level(2, 1);
-    led_state = !led_state;
-
-    //notify
-    char a[5];
-    if (led_state)
-    {
-        a[0] = 'o';
-        a[1] = 'n';
-        a[2] = '\0';
-        a[3] = '\0';
-        a[4] = '\0';
-    }
-    else
-    {
-        a[0] = 'o';
-        a[1] = 'f';
-        a[2] = 'f';
-        a[3] = '\0';
-        a[4] = '\0';
-    }
-
-    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[LED_VAL], sizeof(a), &a, false);
-}
-
-static void ble_led_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
-{
-    const u_int8_t *value;
-    u_int16_t len;
-
-    esp_ble_gatts_get_attr_value(spp_handle_table[LED_VAL], &len, &value);
-
-    printf("获取led特征值    OK\n");
-    printf("length = %d\r\n", len);
-    printf("led_value = %d\r\n", *value);
-
-    if (*value == 1)
-        gpio_set_level(2, 0);
-    else if (*value == 0)
-        gpio_set_level(2, 1);
-    else
-        printf("输入的值不为0或1\n");
-
-    char a[5];
-    if (*value == 1)
-    {
-        a[0] = 'o';
-        a[1] = 'n';
-        a[2] = '\0';
-        a[3] = '\0';
-        a[4] = '\0';
-    }
-    else if (*value == 0)
-    {
-        a[0] = 'o';
-        a[1] = 'f';
-        a[2] = 'f';
-        a[3] = '\0';
-        a[4] = '\0';
-    }
-    else
-    {
-        a[0] = 'e';
-        a[1] = 'l';
-        a[2] = 's';
-        a[3] = 'e';
-        a[4] = '\0';
-    }
-
-    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[LED_VAL], sizeof(a), &a, false);
-}
 
 static void url_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void url_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void mac_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void mac_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void ssid_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void ssid_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void wifi_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void wifi_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void aota_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void aota_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void lit_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void lit_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void strip_lit_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void strip_lit_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void r_lit_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void r_lit_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void matrix_lit_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void matrix_lit_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void pid_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void pid_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void armor_id_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void armor_id_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
-//ops服务
+// ops服务
 static void run_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
+    const u_int8_t *value;
+    u_int16_t len;
 
+    esp_ble_gatts_get_attr_value(/*是ops*/ ops_handle_table[RUN_VAL], &len, &value);
+
+    printf("获取run特征值    OK\n");
+    printf("length = %d\r\n", len);
+    printf("value0(颜色) = %d\r\n", value[0]);
+    printf("value1(亮度) = %d\r\n", value[1]);
+    printf("value2 = %d\r\n", value[2]);
+
+    char a[5];
+
+    if (value[0] == 0)
+    {
+        LED_Strip_0.set_color((uint8_t)0, 0, 255, value[1]);
+        LED_Strip_0.refresh();
+        a[0] = 'b';
+        a[1] = 'l';
+        a[2] = 'u';
+        a[3] = 'e';
+        a[4] = '\0';
+    }
+    else if (value[0] == 1)
+    {
+        LED_Strip_0.set_color((uint8_t)255, 0, 0, value[1]);
+        LED_Strip_0.refresh();
+        a[0] = 'r';
+        a[1] = 'e';
+        a[2] = 'd';
+        a[3] = '\0';
+        a[4] = '\0';
+    }
+
+    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[RUN_VAL], sizeof(a), (uint8_t *)a, false);
 }
 
 static void gpa_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void unlk_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void stop_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static void ota_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
 }
 
 static uint8_t find_char_and_desr_index(uint16_t handle)
 {
     uint8_t error = 0xff;
-    //系统参数设置服务
-    if(handle < 77){
-        for (int i = 0; i < SPP_IDX_NB; i++){
-            if (handle == spp_handle_table[i]){
+    // 系统参数设置服务
+    if (handle < spp_handle_table[0] + SPP_IDX_NB)
+    {
+        for (int i = 0; i < SPP_IDX_NB; i++)
+        {
+            if (handle == spp_handle_table[i])
+            {
                 return i;
             }
         }
     }
-    //大符操作服务
-    else{
-        for (int i = 0; i < OPS_IDX_NB; i++){
-            if (handle == ops_handle_table[i]){
+    // 大符操作服务
+    else
+    {
+        for (int i = 0; i < OPS_IDX_NB; i++)
+        {
+            if (handle == ops_handle_table[i])
+            {
                 return i + SPP_IDX_NB;
             }
         }
@@ -731,8 +655,8 @@ static void print_write_buffer(void)
     }
 }
 
-//GAP的回调函数
-static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
+// GAP的回调函数
+extern "C" void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     printf("GAP的回调函数\n");
     esp_err_t err;
@@ -741,12 +665,12 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
     switch (event)
     {
     case ESP_GAP_BLE_ADV_DATA_RAW_SET_COMPLETE_EVT:
-    //设置广播原始数据完成
+        // 设置广播原始数据完成
         esp_ble_gap_start_advertising(&spp_adv_params);
         break;
     case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:
-    //开始广播完成
-        // advertising start complete event to indicate advertising start successfully or failed
+        // 开始广播完成
+        //  advertising start complete event to indicate advertising start successfully or failed
         if ((err = param->adv_start_cmpl.status) != ESP_BT_STATUS_SUCCESS)
         {
             ESP_LOGE(GATTS_TABLE_TAG, "Advertising start failed: %s\n", esp_err_to_name(err));
@@ -757,21 +681,21 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
     }
 }
 
-//GATTS最终的回调函数
-static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
+// GATTS最终的回调函数
+extern "C" void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
     esp_ble_gatts_cb_param_t *p_data = (esp_ble_gatts_cb_param_t *)param;
-    uint8_t res = 0xff;
+    uint8_t res;
 
     ESP_LOGI(GATTS_TABLE_TAG, "event = %x\n", event);
     switch (event)
     {
     case ESP_GATTS_REG_EVT:
-//注册事件
+        // 注册事件
         esp_ble_gap_set_device_name(SAMPLE_DEVICE_NAME);
         esp_ble_gap_config_adv_data_raw((uint8_t *)spp_adv_data, sizeof(spp_adv_data));
 
-        //创建属性表
+        // 创建属性表
         esp_ble_gatts_create_attr_tab(spp_gatt_db, gatts_if, SPP_IDX_NB, SPP_SVC_INST_ID);
         printf("注册spp属性表结束\n");
         esp_ble_gatts_create_attr_tab(ops_gatt_db, gatts_if, OPS_IDX_NB, OPS_SVC_INST_ID);
@@ -779,20 +703,10 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
         break;
     case ESP_GATTS_READ_EVT:
     {
-// read事件
+        // read事件
         res = find_char_and_desr_index(p_data->read.handle);
         switch (res)
         {
-        case LED_VAL:
-            // LED_read事件
-            printf("LED_read事件\n");
-            ESP_ERROR_CHECK(esp_event_post(LED_EVENTS, LED_EVENT_READ, NULL, 0, portMAX_DELAY));
-            printf("LED_read事件结束\n");
-            break;
-        case LED_CFG:
-            // LED_cfg
-            printf("LED_cfg(read)\n");
-            break;
         case URL_VAL:
             // URL_read事件
             printf("URL_read事件\n");
@@ -918,20 +832,11 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
     {
         // write事件
         res = find_char_and_desr_index(p_data->write.handle);
+        printf("write事件  pdata handle: %d\n", res);
         if (p_data->write.is_prep == false)
         {
-            ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_WRITE_EVT : handle = %d\n", res);
             switch (res)
             {
-            case LED_VAL:
-                // LED_write事件
-                printf("LED_write事件\n");
-                esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
-                break;
-            case LED_CFG:
-                // LED_cfg
-                printf("LED_cfg(write)\n");
-                break;
             case URL_VAL:
                 // URL_write事件
                 printf("URL_write事件\n");
@@ -1058,7 +963,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                 // STOP_cfg
                 printf("STOP_cfg(write)\n");
                 break;
-                case OTA_VAL + SPP_IDX_NB:
+            case OTA_VAL + SPP_IDX_NB:
                 // OTA_write事件
                 printf("OTA_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
@@ -1092,7 +997,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
         spp_mtu_size = p_data->mtu.mtu;
         break;
     case ESP_GATTS_CONF_EVT:
-//经过esp_ble_gatts_send_indicate会到此处
+        // 经过esp_ble_gatts_send_indicate会到此处
         printf("经过send_indicate后\n");
         break;
     case ESP_GATTS_UNREG_EVT:
@@ -1130,119 +1035,112 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
         {
             ESP_LOGE(GATTS_TABLE_TAG, "Create attribute table failed, error code=0x%x", param->add_attr_tab.status);
         }
-        //创建属性表后启动服务
+        // 创建属性表后启动服务
         else if (param->add_attr_tab.svc_inst_id == 0)
         {
             memcpy(spp_handle_table, param->add_attr_tab.handles, sizeof(spp_handle_table));
             esp_ble_gatts_start_service(spp_handle_table[SPP_IDX_SVC]);
 
-            printf("spp_handle_table");
-            printf("%d\n", spp_handle_table[0]);
+            printf("spp_handle_table[0] = %d\n", spp_handle_table[0]);
         }
         else if (param->add_attr_tab.svc_inst_id == 1)
         {
             memcpy(ops_handle_table, param->add_attr_tab.handles, sizeof(ops_handle_table));
             esp_ble_gatts_start_service(ops_handle_table[OPS_IDX_SVC]);
 
-            printf("ops_handle_table");
-            printf("%d\n", ops_handle_table[0]);
+            printf("ops_handle_table[0] = %d\n", ops_handle_table[0]);
         }
         break;
     }
     case ESP_GATTS_SET_ATTR_VAL_EVT:
     {
-// 当设置属性表完成时，到这里
-        printf("设置属性表完成\n");
+        // 当设置属性表完成时，到这里
         res = find_char_and_desr_index(param->set_attr_val.attr_handle);
         switch (res)
         {
-        case LED_VAL:
-        //LED
-            esp_event_post(LED_EVENTS, LED_EVENT_WRITE, NULL, 0, portMAX_DELAY);
-            break;
         case URL_VAL:
-        //URL
+            // URL
             esp_event_post(URL_EVENTS, URL_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case MAC_VAL:
-        //MAC
+            // MAC
             esp_event_post(MAC_EVENTS, MAC_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case SSID_VAL:
-        //SSID
+            // SSID
             esp_event_post(SSID_EVENTS, SSID_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case Wifi_VAL:
-        //Wifi
-            esp_event_post(Wifi_EVENTS, Wifi_EVENT_WRITE, NULL, 0, portMAX_DELAY);                 
+            // Wifi
+            esp_event_post(Wifi_EVENTS, Wifi_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case AOTA_VAL:
-        //AOTA
+            // AOTA
             esp_event_post(AOTA_EVENTS, AOTA_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case LIT_VAL:
-        //LIT
+            // LIT
             esp_event_post(LIT_EVENTS, LIT_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case STRIP_LIT_VAL:
-        //STRIP_LIT
+            // STRIP_LIT
             esp_event_post(STRIP_LIT_EVENTS, STRIP_LIT_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case R_LIT_VAL:
-        //R_LIT
+            // R_LIT
             esp_event_post(R_LIT_EVENTS, R_LIT_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case MATRIX_LIT_VAL:
-        //MATRIX_LIT
+            // MATRIX_LIT
             esp_event_post(MATRIX_LIT_EVENTS, MATRIX_LIT_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case PID_VAL:
-        //PID
+            // PID
             esp_event_post(PID_EVENTS, PID_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case ARMOR_ID_VAL:
-        //ARMOR_ID
+            // ARMOR_ID
             esp_event_post(ARMOR_ID_EVENTS, ARMOR_ID_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case RUN_VAL + SPP_IDX_NB:
-        //RUN
+            // RUN
             esp_event_post(RUN_EVENTS, RUN_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case UNLK_VAL + SPP_IDX_NB:
-        //UNLK
+            // UNLK
             esp_event_post(UNLK_EVENTS, UNLK_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case STOP_VAL + SPP_IDX_NB:
-        //STOP
+            // STOP
             esp_event_post(STOP_EVENTS, STOP_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case OTA_VAL + SPP_IDX_NB:
-        //OTA
+            // OTA
             esp_event_post(OTA_EVENTS, OTA_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
-        default:
         }
         break;
     }
     default:
+        break;
     }
 }
 
-//GATTS的回调函数
-static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
+// GATTS的回调函数
+extern "C" void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
     printf("\nGATTS事件回调\n\n");
     ESP_LOGI(GATTS_TABLE_TAG, "EVT %d, gatts if %d\n", event, gatts_if);
 
-/* If event is register event, store the gatts_if for each profile */
-    //如果是注册APP事件
+    /* If event is register event, store the gatts_if for each profile */
+    // 如果是注册APP事件
     if (event == ESP_GATTS_REG_EVT)
     {
-        //如果注册成功
+        // 如果注册成功
         if (param->reg.status == ESP_GATT_OK)
         {
-            //APP记录描述符
-            spp_profile_tab[SPP_PROFILE_APP_IDX/*只用一个APP所以下标为0*/].gatts_if = gatts_if;
+            // APP记录描述符
+            spp_profile_tab[SPP_PROFILE_APP_IDX /*只用一个APP所以下标为0*/].gatts_if = gatts_if;
         }
         else
         {
@@ -1253,13 +1151,13 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     do
     {
         int idx;
-        //遍历注册APP的结构表
+        // 遍历注册APP的结构表
         for (idx = 0; idx < SPP_PROFILE_NUM; idx++)
         {
             if (gatts_if == ESP_GATT_IF_NONE || /* ESP_GATT_IF_NONE, not specify a certain gatt_if, need to call every profile cb function */
                 gatts_if == spp_profile_tab[idx].gatts_if)
             {
-                //执行注册的APP的回调函数
+                // 执行注册的APP的回调函数
                 if (spp_profile_tab[idx].gatts_cb)
                 {
                     printf("去往profile\n");
@@ -1271,10 +1169,9 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     printf("从profile回来\n");
 }
 
-void app_main(void)
+extern "C" void app_main(void)
 {
     printf("\n");
-
     // Initialize NVS
     esp_err_t ret;
     ret = nvs_flash_init();
@@ -1290,12 +1187,12 @@ void app_main(void)
     GPIO_config.mode = GPIO_MODE_OUTPUT;
     GPIO_config.intr_type = GPIO_INTR_DISABLE;
     GPIO_config.pin_bit_mask = (1U << 2);
-    GPIO_config.pull_down_en = 0;
-    GPIO_config.pull_up_en = 0;
+    GPIO_config.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    GPIO_config.pull_up_en = GPIO_PULLUP_DISABLE;
     gpio_config(&GPIO_config);
 
     // 获取ble默认配置
-    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT(); 
+    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
 
     esp_bt_controller_init(&bt_cfg);
     esp_bt_controller_enable(ESP_BT_MODE_BLE);
@@ -1303,9 +1200,9 @@ void app_main(void)
     esp_bluedroid_enable();
 
     // GATT的回调注册
-    esp_ble_gatts_register_callback(gatts_event_handler); 
+    esp_ble_gatts_register_callback(gatts_event_handler);
     // GAP事件的函数
-    esp_ble_gap_register_callback(gap_event_handler);     
+    esp_ble_gap_register_callback(gap_event_handler);
     // 注册APP
     esp_ble_gatts_app_register(ESP_SPP_APP_ID);
 
@@ -1314,10 +1211,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     // 注册事件handle
-    //spp服务
-    // Register led event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(LED_EVENTS, LED_EVENT_READ, ble_led_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(LED_EVENTS, LED_EVENT_WRITE, ble_led_write_handler, NULL, NULL));
+    // spp服务
     // Register url event handlers.
     ESP_ERROR_CHECK(esp_event_handler_instance_register(URL_EVENTS, URL_EVENT_READ, url_read_handler, NULL, NULL));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(URL_EVENTS, URL_EVENT_WRITE, url_write_handler, NULL, NULL));
@@ -1325,42 +1219,42 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, mac_read_handler, NULL, NULL));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, mac_write_handler, NULL, NULL));
     // Register ssid event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, ssid_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, ssid_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(SSID_EVENTS, SSID_EVENT_READ, ssid_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(SSID_EVENTS, SSID_EVENT_WRITE, ssid_write_handler, NULL, NULL));
     // Register wifi event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, wifi_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, wifi_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(Wifi_EVENTS, Wifi_EVENT_READ, wifi_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(Wifi_EVENTS, Wifi_EVENT_WRITE, wifi_write_handler, NULL, NULL));
     // Register aota event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, aota_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, aota_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(AOTA_EVENTS, AOTA_EVENT_READ, aota_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(AOTA_EVENTS, AOTA_EVENT_WRITE, aota_write_handler, NULL, NULL));
     // Register lit event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, lit_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, lit_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(LIT_EVENTS, LIT_EVENT_READ, lit_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(LIT_EVENTS, LIT_EVENT_WRITE, lit_write_handler, NULL, NULL));
     // Register strip_lit event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, strip_lit_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, strip_lit_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(STRIP_LIT_EVENTS, STRIP_LIT_EVENT_READ, strip_lit_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(STRIP_LIT_EVENTS, STRIP_LIT_EVENT_WRITE, strip_lit_write_handler, NULL, NULL));
     // Register r_lit event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, r_lit_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, r_lit_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(R_LIT_EVENTS, R_LIT_EVENT_READ, r_lit_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(R_LIT_EVENTS, R_LIT_EVENT_WRITE, r_lit_write_handler, NULL, NULL));
     // Register matrix_lit event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, matrix_lit_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, matrix_lit_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(MATRIX_LIT_EVENTS, MATRIX_LIT_EVENT_READ, matrix_lit_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(MATRIX_LIT_EVENTS, MATRIX_LIT_EVENT_WRITE, matrix_lit_write_handler, NULL, NULL));
     // Register pid event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, pid_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, pid_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(PID_EVENTS, PID_EVENT_READ, pid_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(PID_EVENTS, PID_EVENT_WRITE, pid_write_handler, NULL, NULL));
     // Register armor_id event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_READ, armor_id_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(MAC_EVENTS, MAC_EVENT_WRITE, armor_id_write_handler, NULL, NULL));
-    //ops服务
-    // Register run event handlers.
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(ARMOR_ID_EVENTS, ARMOR_ID_EVENT_READ, armor_id_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(ARMOR_ID_EVENTS, ARMOR_ID_EVENT_WRITE, armor_id_write_handler, NULL, NULL));
+    // ops服务
+    //  Register run event handlers.
     ESP_ERROR_CHECK(esp_event_handler_instance_register(RUN_EVENTS, RUN_EVENT_WRITE, run_write_handler, NULL, NULL));
     // Register gpa event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(RUN_EVENTS, RUN_EVENT_WRITE, gpa_read_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(GPA_EVENTS, GPA_EVENT_READ, gpa_read_handler, NULL, NULL));
     // Register unlk event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(RUN_EVENTS, RUN_EVENT_WRITE, unlk_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(UNLK_EVENTS, UNLK_EVENT_WRITE, unlk_write_handler, NULL, NULL));
     // Register stop event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(RUN_EVENTS, RUN_EVENT_WRITE, stop_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(STOP_EVENTS, STOP_EVENT_WRITE, stop_write_handler, NULL, NULL));
     // Register ota event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(RUN_EVENTS, RUN_EVENT_WRITE, ota_write_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(OTA_EVENTS, OTA_EVENT_WRITE, ota_write_handler, NULL, NULL));
     return;
 }
