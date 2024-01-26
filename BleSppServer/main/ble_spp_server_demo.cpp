@@ -59,17 +59,36 @@ static const uint16_t ops_service_uuid = 0x1828;
 #define UUID_UNLK 0x2A3B // Service Required
 #define UUID_STOP 0x2AC8 // Object Changed
 #define UUID_OTA 0x2A9F  // User Control Point
-    
+
 // LED_Strip
 LED_Strip LED_Strip_0(GPIO_NUM_10, 49);
 
-static const uint8_t spp_adv_data[23] = {
+static const uint8_t spp_adv_data[20] = {
     /* Flags */
-    0x02, 0x01, 0x06,
+    0x02,
+    0x01,
+    0x06,
     /* Complete List of 16-bit Service Class UUIDs */
-    0x03, 0x03, 0xF0, 0xAB,
+    0x03,
+    0x03,
+    0xF0,
+    0xAB,
     /* Complete Local Name in advertising */
-    0x0F, 0x09, 'E', 'S', 'P', '_', 'S', 'P', 'P', '_', 'S', 'E', 'R', 'V', 'E', 'R'};
+    // PowerRune24
+    0x0B,
+    0x09,
+    'P',
+    'o',
+    'w',
+    'e',
+    'r',
+    'R',
+    'u',
+    'n',
+    'e',
+    '2',
+    '4',
+};
 
 static uint16_t spp_mtu_size = 23;
 static uint16_t spp_conn_id = 0xffff;
@@ -160,10 +179,6 @@ static const uint8_t char_prop_write_notify = ESP_GATT_CHAR_PROP_BIT_WRITE_NR | 
 static const uint8_t char_prop_read_write_notify = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_WRITE_NR | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
 
 // 系统参数设置服务的属性表的相关全局变量
-// led
-static const uint16_t spp_led_uuid = UUID_LED; // 设置led的uuid
-static const u_int8_t spp_led_val[1] = {0};    // led的状态（value）只有一个值
-static const uint8_t spp_led_ccc[2] = {0};
 // url
 static const uint16_t url_uuid = UUID_URL;
 static const u_int8_t url_val[1] = {0};
@@ -214,16 +229,6 @@ static const esp_gatts_attr_db_t spp_gatt_db[SPP_IDX_NB] = {
     // SPP -  Service Declaration
     [SPP_IDX_SVC] = {{ESP_GATT_AUTO_RSP},
                      {ESP_UUID_LEN_16, (uint8_t *)&primary_service_uuid, ESP_GATT_PERM_READ, sizeof(spp_service_uuid), sizeof(spp_service_uuid), (uint8_t *)&spp_service_uuid}},
-
-    // led
-    [LED_CHAR] = {{ESP_GATT_AUTO_RSP},
-                  {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
-
-    [LED_VAL] = {{ESP_GATT_AUTO_RSP},
-                 {ESP_UUID_LEN_16, (uint8_t *)&spp_led_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(spp_led_val), sizeof(spp_led_val), (uint8_t *)spp_led_val}},
-
-    [LED_CFG] = {{ESP_GATT_AUTO_RSP},
-                 {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(spp_led_ccc), (uint8_t *)spp_led_ccc}},
 
     // url
     [URL_CHAR] = {{ESP_GATT_AUTO_RSP},
@@ -414,113 +419,10 @@ static const esp_gatts_attr_db_t ops_gatt_db[OPS_IDX_NB] = {
                  {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(ops_ota_ccc), (uint8_t *)ops_ota_ccc}},
 };
 
-// 定义events
-// spp服务
-ESP_EVENT_DEFINE_BASE(LED_EVENTS);
-ESP_EVENT_DEFINE_BASE(URL_EVENTS);
-ESP_EVENT_DEFINE_BASE(MAC_EVENTS);
-ESP_EVENT_DEFINE_BASE(SSID_EVENTS);
-ESP_EVENT_DEFINE_BASE(Wifi_EVENTS);
-ESP_EVENT_DEFINE_BASE(AOTA_EVENTS);
-ESP_EVENT_DEFINE_BASE(LIT_EVENTS);
-ESP_EVENT_DEFINE_BASE(STRIP_LIT_EVENTS);
-ESP_EVENT_DEFINE_BASE(R_LIT_EVENTS);
-ESP_EVENT_DEFINE_BASE(MATRIX_LIT_EVENTS);
-ESP_EVENT_DEFINE_BASE(PID_EVENTS);
-ESP_EVENT_DEFINE_BASE(ARMOR_ID_EVENTS);
-// ops服务
-ESP_EVENT_DEFINE_BASE(RUN_EVENTS);
-ESP_EVENT_DEFINE_BASE(GPA_EVENTS);
-ESP_EVENT_DEFINE_BASE(UNLK_EVENTS);
-ESP_EVENT_DEFINE_BASE(STOP_EVENTS);
-ESP_EVENT_DEFINE_BASE(OTA_EVENTS);
-//PowerRune_Evets
-ESP_EVENT_DEFINE_BASE(PRC);
-ESP_EVENT_DEFINE_BASE(PRA);
-ESP_EVENT_DEFINE_BASE(PRM);
-
 // event loop中的handle
 // Handler which executes when the ble started event gets executed by the loop.
 // spp服务
-static void ble_led_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
-{
-    // int num = *((int*) handler_args);
 
-    static int led_state = 0;
-    if (led_state)
-        gpio_set_level(GPIO_NUM_2, 0);
-    else
-        gpio_set_level(GPIO_NUM_2, 1);
-    led_state = !led_state;
-
-    // notify
-    char a[5];
-    if (led_state)
-    {
-        a[0] = 'o';
-        a[1] = 'n';
-        a[2] = '\0';
-        a[3] = '\0';
-        a[4] = '\0';
-    }
-    else
-    {
-        a[0] = 'o';
-        a[1] = 'f';
-        a[2] = 'f';
-        a[3] = '\0';
-        a[4] = '\0';
-    }
-
-    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[LED_VAL], sizeof(a), (uint8_t *)a, false);
-}
-
-static void ble_led_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
-{
-    const u_int8_t *value;
-    u_int16_t len;
-
-    esp_ble_gatts_get_attr_value(spp_handle_table[LED_VAL], &len, &value);
-
-    printf("获取led特征值    OK\n");
-    printf("length = %d\r\n", len);
-    printf("value = %d\r\n", *value);
-
-    if (*value == 1)
-        gpio_set_level(GPIO_NUM_2, 0);
-    else if (*value == 0)
-        gpio_set_level(GPIO_NUM_2, 1);
-    else
-        printf("输入的值不为0或1\n");
-
-    char a[5];
-    if (*value == 1)
-    {
-        a[0] = 'o';
-        a[1] = 'n';
-        a[2] = '\0';
-        a[3] = '\0';
-        a[4] = '\0';
-    }
-    else if (*value == 0)
-    {
-        a[0] = 'o';
-        a[1] = 'f';
-        a[2] = 'f';
-        a[3] = '\0';
-        a[4] = '\0';
-    }
-    else
-    {
-        a[0] = 'e';
-        a[1] = 'l';
-        a[2] = 's';
-        a[3] = 'e';
-        a[4] = '\0';
-    }
-
-    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[LED_VAL], sizeof(a), (uint8_t *)a, false);
-}
 
 static void url_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
@@ -615,7 +517,7 @@ static void run_write_handler(void *handler_args, esp_event_base_t base, int32_t
     const u_int8_t *value;
     u_int16_t len;
 
-    esp_ble_gatts_get_attr_value(/*是ops*/ops_handle_table[RUN_VAL], &len, &value);
+    esp_ble_gatts_get_attr_value(/*是ops*/ ops_handle_table[RUN_VAL], &len, &value);
 
     printf("获取run特征值    OK\n");
     printf("length = %d\r\n", len);
@@ -635,7 +537,7 @@ static void run_write_handler(void *handler_args, esp_event_base_t base, int32_t
         a[3] = 'e';
         a[4] = '\0';
     }
-    else if(value[0] == 1)
+    else if (value[0] == 1)
     {
         LED_Strip_0.set_color((uint8_t)255, 0, 0, value[1]);
         LED_Strip_0.refresh();
@@ -805,16 +707,6 @@ extern "C" void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt
         res = find_char_and_desr_index(p_data->read.handle);
         switch (res)
         {
-        case LED_VAL:
-            // LED_read事件
-            printf("LED_read事件\n");
-            ESP_ERROR_CHECK(esp_event_post(LED_EVENTS, LED_EVENT_READ, NULL, 0, portMAX_DELAY));
-            printf("LED_read事件结束\n");
-            break;
-        case LED_CFG:
-            // LED_cfg
-            printf("LED_cfg(read)\n");
-            break;
         case URL_VAL:
             // URL_read事件
             printf("URL_read事件\n");
@@ -940,20 +832,11 @@ extern "C" void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt
     {
         // write事件
         res = find_char_and_desr_index(p_data->write.handle);
-        printf("write事件  pdata handle: %d\n",res);
+        printf("write事件  pdata handle: %d\n", res);
         if (p_data->write.is_prep == false)
         {
             switch (res)
             {
-            case LED_VAL:
-                // LED_write事件
-                printf("LED_write事件\n");
-                esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
-                break;
-            case LED_CFG:
-                // LED_cfg
-                printf("LED_cfg(write)\n");
-                break;
             case URL_VAL:
                 // URL_write事件
                 printf("URL_write事件\n");
@@ -1175,11 +1058,6 @@ extern "C" void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt
         res = find_char_and_desr_index(param->set_attr_val.attr_handle);
         switch (res)
         {
-        case LED_VAL:
-            // LED
-            printf("led post\n");
-            esp_event_post(LED_EVENTS, LED_EVENT_WRITE, NULL, 0, portMAX_DELAY);
-            break;
         case URL_VAL:
             // URL
             esp_event_post(URL_EVENTS, URL_EVENT_WRITE, NULL, 0, portMAX_DELAY);
@@ -1226,7 +1104,6 @@ extern "C" void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt
             break;
         case RUN_VAL + SPP_IDX_NB:
             // RUN
-            printf("run post\n");
             esp_event_post(RUN_EVENTS, RUN_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case UNLK_VAL + SPP_IDX_NB:
@@ -1335,9 +1212,6 @@ extern "C" void app_main(void)
 
     // 注册事件handle
     // spp服务
-    // Register led event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(LED_EVENTS, LED_EVENT_READ, ble_led_read_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(LED_EVENTS, LED_EVENT_WRITE, ble_led_write_handler, NULL, NULL));
     // Register url event handlers.
     ESP_ERROR_CHECK(esp_event_handler_instance_register(URL_EVENTS, URL_EVENT_READ, url_read_handler, NULL, NULL));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(URL_EVENTS, URL_EVENT_WRITE, url_write_handler, NULL, NULL));
