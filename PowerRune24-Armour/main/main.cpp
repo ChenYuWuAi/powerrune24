@@ -48,7 +48,7 @@ extern "C" void app_main(void)
     ESP_LOGI(TAG, "Unit Test Start");
 
     // LED Blink Code
-    LED blink(GPIO_NUM_48, 1, 2, 5);
+    LED blink(GPIO_NUM_48, 1, 2, 2);
 
     // GPIO 0 for test
     gpio_config_t io_conf;
