@@ -35,13 +35,15 @@ Function List:  void task_motor(void *args)
 // #define DEBUG_NO_PID_CURRENT 250
 
 const char *TAG_TWAI = "TWAI";
+extern esp_event_loop_handle_t loop_PRM;
 
 // speed_trace_sin_info
 typedef struct
 {
-    float set_speed;
-    float speed_angular;
-    float offset;
+    TickType_t start_tick; // 开始时间
+    float amplitude;       // 振幅
+    float omega;           // 角频率
+    float offset;          // 偏移量0
 } speed_trace_sin_info_t;
 
 // motor_status
@@ -59,7 +61,7 @@ typedef enum
     // 运转中
     MOTOR_NORMAL,
 
-    //速度正在改变中
+    // 速度正在改变中
     MOTOR_NORMAL_PENDING,
 
     // state: 电机启动需要时间, 到达正弦转速后启动LED,
@@ -74,21 +76,20 @@ typedef enum
 // motor_info
 typedef struct
 {
-    int set_speed;
-    int set_current;
-    int speed;
-    int current;
-    int torque;
-    int temp;
+    int16_t set_speed;
+    int16_t set_current;
+    int16_t speed;
+    int16_t current;
+    int16_t torque;
+    int16_t temp;
     uint8_t motor_id;
     speed_trace_sin_info_t speed_trace_sin_info;
     motor_status_t motor_status;
     uint32_t last_received;
 } motor_info_t;
 
-class Motor : PIDController
+class Motor : PID
 {
-
 private:
     gpio_num_t TX_TWAI_GPIO;
     gpio_num_t RX_TWAI_GPIO;
@@ -163,10 +164,6 @@ private:
     // 电机状态从MOTOR_NORMAL_PENDING转换为MOTOR_NORMAL, 或者电机状态从MOTOR_TRACE_SIN_PENDING转换为MOTOR_TRACE_SIN_STABLE
     static void speed_stable_check()
     {
-        static uint32_t current_tick = 0;
-        current_tick = xTaskGetTickCount();
-        ESP_LOGI(TAG_TWAI, "Current tick: %lu", current_tick);
-
         for (size_t i = 0; i < motor_counts; i++)
         {
             if (motor_info[i].motor_status == MOTOR_NORMAL_PENDING)
@@ -183,24 +180,19 @@ private:
                 {
                     motor_info[i].motor_status = MOTOR_TRACE_SIN_STABLE;
                     ESP_LOGI(TAG_TWAI, "Motor %d speed stable.", motor_info[i].motor_id);
-                }
-            }
-        }
+                };
+            };
+        };
     };
-
-
 
 public:
     /**
-     * @brief 初始化电机, 需要手动设置motor_counts, TX和RX的IO口
+     * @brief 初始化电机, 需要在主函数手动设置motor_counts, TX和RX的IO口, PID初始化是否正确? 数据输入包含PID初始化
      */
-    // TODO
-    Motor(uint8_t *motor_id, uint8_t motor_counts = 1, gpio_num_t TX_TWAI_GPIO = GPIO_NUM_4, gpio_num_t RX_TWAI_GPIO = GPIO_NUM_5, double Kp = 1.0, double Ki = 0.0, double Kd = 0.1) : PIDController(Kp, Ki, Kd)
+    Motor(uint8_t *motor_id, uint8_t motor_counts = 1, gpio_num_t TX_TWAI_GPIO = GPIO_NUM_4, gpio_num_t RX_TWAI_GPIO = GPIO_NUM_5, float Kp = 1, float Ki = 0.0, float Kd = 0.0, float Pmax = 1000, float Imax = 1000, float Dmax = 1000, float max = 15000) : PID(Kp, Ki, Kd, Pmax, Imax, Dmax, max)
     {
         this->TX_TWAI_GPIO = TX_TWAI_GPIO;
         this->RX_TWAI_GPIO = RX_TWAI_GPIO;
-
-        PIDController pid(1, 0, 0.1);
 
         twai_timing_config_t timing_config = TWAI_TIMING_CONFIG_1MBITS();
         twai_filter_config_t filter_config = {
@@ -260,7 +252,8 @@ public:
      * @brief 设置电机ID, 使电机ID与motor_info内顺序一致
      * @param index, ID(0-1)
      */
-    esp_err_t set_id(uint8_t index, uint8_t id)
+    esp_err_t
+    set_id(uint8_t index, uint8_t id)
     {
         if (id > 4)
             return ESP_ERR_INVALID_ARG;
@@ -278,6 +271,10 @@ public:
         {
             if (motor_info[i].motor_id == motor_id)
             {
+                // Return ESP_NOT_SUPPORTED when MOTOR_DISCONNECTED
+                if (motor_info[i].motor_status == MOTOR_DISCONNECTED)
+                    return ESP_ERR_NOT_SUPPORTED;
+
                 motor_info[i].motor_status = MOTOR_DISABLED;
                 ESP_LOGI(TAG_TWAI, "Motor %d unlocked.\n", motor_id);
                 break;
@@ -326,7 +323,7 @@ public:
                 }
                 if (speed > 0)
                 {
-                    motor_info[i].motor_status = MOTOR_NORMAL;
+                    motor_info[i].motor_status = MOTOR_NORMAL_PENDING;
                 }
                 else
                 {
@@ -343,7 +340,7 @@ public:
     };
 
     /**
-     * @brief Breif needed.
+     * @brief 设置电机速度跟踪正弦曲线, 如果电机状态为DISABLED_LOCKED, 则返回ESP_ERR_NOT_SUPPORTED
      */
     esp_err_t set_speed_trace(uint8_t motor_id, float amplitude, float omega, float offset)
     {
@@ -351,10 +348,17 @@ public:
         {
             if (motor_info[i].motor_id == motor_id)
             {
-                motor_info[i].speed_trace_sin_info.set_speed = offset;
-                motor_info[i].speed_trace_sin_info.speed_angular = 2 * M_PI * omega;
+                if (motor_info[i].motor_status == MOTOR_DISABLED_LOCKED)
+                {
+                    ESP_LOGW(TAG_TWAI, "Motor %d is locked.\n", motor_id);
+                    return ESP_ERR_NOT_SUPPORTED;
+                }
+                motor_info[i].speed_trace_sin_info.amplitude = amplitude;
+                motor_info[i].speed_trace_sin_info.omega = omega;
                 motor_info[i].speed_trace_sin_info.offset = offset;
                 motor_info[i].motor_status = MOTOR_TRACE_SIN_PENDING;
+                motor_info[i].speed_trace_sin_info.start_tick = xTaskGetTickCount();
+                ESP_LOGI(TAG_TWAI, "Motor %d speed trace sin: amplitude %f, omega %f, offset %f.\n", motor_id, amplitude, omega, offset);
                 return ESP_OK;
             }
         }
@@ -365,17 +369,15 @@ public:
 
     /**
      * @brief get motor status
-    */
+     */
     motor_status_t get_motor_status(uint8_t motor_id)
     {
-        state_check();
         return motor_info[motor_id].motor_status;
     };
 
-    // TODO
     /**
      * @brief set motor status
-    */
+     */
     esp_err_t set_motor_status(uint8_t motor_id, motor_status_t motor_status)
     {
         for (size_t i = 0; i < motor_counts; i++)
@@ -384,8 +386,25 @@ public:
             {
                 motor_info[i].motor_status = motor_status;
                 return ESP_OK;
-            }
-        }
+            };
+        };
+        return ESP_ERR_INVALID_ARG;
+    };
+
+    esp_err_t set_motor_status(uint8_t motor_id, float amplitude, float omega, float offset)
+    {
+        for (size_t i = 0; i < motor_counts; i++)
+        {
+            if (motor_info[i].motor_id == motor_id)
+            {
+                motor_info[i].speed_trace_sin_info.amplitude = amplitude;
+                motor_info[i].speed_trace_sin_info.omega = omega;
+                motor_info[i].speed_trace_sin_info.offset = offset;
+                motor_info[i].motor_status = MOTOR_TRACE_SIN_PENDING;
+                motor_info[i].speed_trace_sin_info.start_tick = xTaskGetTickCount();
+                return ESP_OK;
+            };
+        };
         return ESP_ERR_INVALID_ARG;
     };
 
@@ -400,7 +419,8 @@ protected:
     {
         static uint32_t current_tick = 0;
         current_tick = xTaskGetTickCount();
-        ESP_LOGI(TAG_TWAI, "Current tick: %lu", current_tick);
+        if (current_tick % 1000 == 0)
+            ESP_LOGI(TAG_TWAI, "Current tick: %lu", current_tick);
 
         twai_message_t twai_msg_re;
 
@@ -424,9 +444,10 @@ protected:
                     if ((motor_info[i].motor_status == MOTOR_DISCONNECTED) & (current_tick - motor_info[i].last_received < 100))
                     {
                         motor_info[i].motor_status = MOTOR_DISABLED_LOCKED;
-                    };
-
-                    ESP_LOGI(TAG_TWAI, "Motor %d State: Speed %d, Current %d, Temp %d .", motor_id, motor_info[i].speed, motor_info[i].current, motor_info[i].temp);
+                    }
+                    // 按照一定的时间间隔打印电机状态
+                    if ((current_tick % (500 * portTICK_PERIOD_MS)) == 0)
+                        ESP_LOGI(TAG_TWAI, "Motor %d State: Speed %d, Current %d, Temp %d .", motor_id, motor_info[i].speed, motor_info[i].current, motor_info[i].temp);
                 }
             }
         }
@@ -439,6 +460,7 @@ protected:
                 if (current_tick - motor_info[i].last_received > 1000)
                 {
                     motor_info[i].motor_status = MOTOR_DISCONNECTED;
+                    esp_event_post_to(loop_PRM, PRM, PRM_DISCONNECT_EVENT, NULL, 0, portMAX_DELAY);
                     ESP_LOGI(TAG_TWAI, "Motor %d disconnected.", motor_info[i].motor_id);
                 }
             }
@@ -456,22 +478,14 @@ protected:
 
         double PID_CURRENT = 0;
 
-        for (size_t i = 0; i < motor_counts; i++){
-            if(motor_ctrl->motor_info[i].motor_status == MOTOR_NORMAL){
-                PID_CURRENT = motor_ctrl->getValue(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed);
-            }
-        };
-        
-
         while (1)
         {
             state_check();
             speed_stable_check();
             for (size_t i = 0; i < motor_counts; i++)
             {
-                ESP_LOGI(TAG_TWAI, "Motor %d status: %d", motor_info[i].motor_id, motor_info[i].motor_status);
-
-                // TODO double PID_CURRENT = 0.0f;
+                //     if (xTaskGetTickCount() % 1000 == 0)
+                //         ESP_LOGI(TAG_TWAI, "Motor %d status: %d", motor_info[i].motor_id, motor_info[i].motor_status);
 
                 // check motor status
                 switch (motor_ctrl->motor_info[i].motor_status)
@@ -483,28 +497,32 @@ protected:
                     break;
 
                 case MOTOR_NORMAL:
-                    // TODO PID_CURRENT = motor_ctrl->getOutput(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed);
-                    PID_CURRENT = motor_ctrl->getValue(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed);
+                case MOTOR_NORMAL_PENDING:
+                    PID_CURRENT = motor_ctrl->get_output(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed);
                     set_current(motor_info[i].motor_id, PID_CURRENT, current_info);
-/*
-#ifdef DEBUG_NO_PID
-                    set_current(motor_info[i].motor_id, DEBUG_NO_PID_CURRENT, current_info);
-#endif
-#ifndef DEBUG_NO_PID
-
-                    set_current(motor_info[i].motor_id, motor_info[i].set_current, current_info);
                     break;
-#endif
-*/
+
+                case MOTOR_TRACE_SIN_PENDING:
+                case MOTOR_TRACE_SIN_STABLE:
+                    // Generate SIN speed
+                    motor_info[i].set_speed =
+                        (motor_info[i].speed_trace_sin_info.amplitude *
+                             sinf(motor_info[i].speed_trace_sin_info.omega *
+                                  (xTaskGetTickCount() - motor_info[i].speed_trace_sin_info.start_tick) / (float)CONFIG_FREERTOS_HZ) +
+                         motor_info[i].speed_trace_sin_info.offset) *
+                        30 / (2 * M_PI);
+                    PID_CURRENT = motor_ctrl->get_output(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed);
+                    set_current(motor_info[i].motor_id, PID_CURRENT, current_info);
+                    break;
                 default:
-
                     break;
-                }
-            }
+                };
+            };
             send_motor_current(current_info);
-            ESP_LOGI(TAG_TWAI, "Current: %d, %d, %d, %d", current_info.iq1, current_info.iq2, current_info.iq3, current_info.iq4);
             vTaskDelay(1 / portTICK_PERIOD_MS);
-        }
+            // LOG MOTOR_INFO_t
+            ESP_LOGI(TAG_TWAI, "Motor 1: %i, %i, %i, %i, %i, %i, %i, %i", motor_info[0].set_speed, motor_info[0].set_current, motor_info[0].speed, motor_info[0].current, motor_info[0].torque, motor_info[0].temp, motor_info[0].motor_id, motor_info[0].motor_status);
+        };
         vTaskDelete(NULL);
     };
 };

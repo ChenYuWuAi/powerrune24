@@ -11,8 +11,6 @@
 #include "PowerRune_Events.h"
 #include "motor_ctrl.h"
 
-
-
 // ESP_EVENT_DECLARE_BASE(PRM);
 // enum
 // {
@@ -22,7 +20,7 @@
 //     PRM_START_DONE_EVENT,
 //     PRM_SPEED_STABLE_EVENT,
 //     PRM_STOP_EVENT,
-//     PRM_DISCONNECT_EVENT, 
+//     PRM_DISCONNECT_EVENT,
 // };
 
 // typedef enum
@@ -37,13 +35,13 @@
 // } motor_status_t;
 
 // event loop TAG
-static const char* TAG = "PRM";
+static const char *TAG = "PRM";
 
 // create event loop with task PRM
-esp_event_loop_handle_t loop_with_PRM;
+esp_event_loop_handle_t loop_PRM;
 
 // check event loop: loop_with_PRM
-static void check_loop(void* handler_args, esp_event_base_t event_base, int32_t event_id, void* event_data)
+static void check_loop(void *handler_args, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     ESP_LOGI(TAG, "Set done.");
 };
@@ -52,52 +50,51 @@ static void check_loop(void* handler_args, esp_event_base_t event_base, int32_t 
 // ESP_EVENT_DEFINE_BASE(PRM);
 
 // define event base handler function
-static void PRM_event_handler(void* handler_args, esp_event_base_t event_base, int32_t event_id, void* event_data)
+static void PRM_event_handler(void *handler_args, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     // set handler_args to motor_3508
-    Motor* motor_3508 = (Motor*)handler_args;
+    Motor *motor_3508 = (Motor *)handler_args;
+    esp_err_t err = ESP_OK;
 
-    if (event_base == PRM)
+    switch (event_id)
     {
-        switch (event_id)
+    case PRM_UNLOCK_EVENT:
+        ESP_LOGI(TAG, "PRM_UNLOCK_EVENT");
+
+        err = motor_3508->unlock_motor(CONFIG_DEFAULT_MOTOR_ID);
+        // post PRM_UNLOCK_DONE_EVENT
+        ESP_ERROR_CHECK(esp_event_post_to(loop_PRM, PRM, PRM_UNLOCK_DONE_EVENT, &err, sizeof(esp_err_t), portMAX_DELAY));
+        break;
+    case PRM_START_EVENT:
+    {
+        ESP_LOGI(TAG, "PRM_START_EVENT");
+        struct PRM_START_DONE_EVENT_DATA *start_data = (struct PRM_START_DONE_EVENT_DATA *)event_data;
+        if (start_data->mode == 0)
         {
-        case PRM_UNLOCK_EVENT:
-            ESP_LOGI(TAG, "PRM_UNLOCK_EVENT");
-            // TODO if motor status is MOTOR_DISABLED_LOCKED
-            // TODO
-            // set motor status to MOTOR_DISABLED
-            motor_3508->unlock_motor(1);
-            // TODO motor_3508->set_motor_status(1, MOTOR_DISABLED);
-            // post PRM_UNLOCK_DONE_EVENT
-            ESP_ERROR_CHECK(esp_event_post_to(loop_with_PRM, PRM, PRM_UNLOCK_DONE_EVENT, NULL, 0, portMAX_DELAY));
-            break;
-        case PRM_START_EVENT:
-            ESP_LOGI(TAG, "PRM_START_EVENT");
-            // set motor status to MOTOR_NORMAL_PENDING & MOTOR_TRACE_SIN_PENDING
-            motor_3508->set_motor_status(1, MOTOR_NORMAL_PENDING);
-            motor_3508->set_motor_status(1, MOTOR_TRACE_SIN_PENDING);
-            // post PRM_START_DONE_EVENT
-            ESP_ERROR_CHECK(esp_event_post_to(loop_with_PRM, PRM, PRM_START_DONE_EVENT, NULL, 0, portMAX_DELAY));
-            break;
-        case PRM_STOP_EVENT:
-            ESP_LOGI(TAG, "PRM_STOP_EVENT");
-            break;
-        case PRM_DISCONNECT_EVENT:
-            // if motor status is MOTOR_DISABLED_LOCKED, post PRM_DISCONNECT_EVENT
-            if(motor_3508->get_motor_status(1) == MOTOR_DISABLED_LOCKED)
-            {
-                ESP_ERROR_CHECK(esp_event_post_to(loop_with_PRM, PRM, PRM_DISCONNECT_EVENT, NULL, 0, portMAX_DELAY));
-            };
-            break;
-        default:
-            // if motor status is MOTOR_DISCONNECTED or MOTOR_NORMAL_PENDING or MOTOR_DISABLED or MOTOR_TRACE_SIN_STABLE, post PRM_DISCONNECT_EVENT, set motor status to MOTOR_DISABLED_LOCKED
-            if(((motor_3508->get_motor_status(1) == MOTOR_DISCONNECTED) || (motor_3508->get_motor_status(1) == MOTOR_NORMAL_PENDING) || (motor_3508->get_motor_status(1) == MOTOR_DISABLED) || (motor_3508->get_motor_status(1) == MOTOR_TRACE_SIN_STABLE)))
-            {
-                ESP_ERROR_CHECK(esp_event_post_to(loop_with_PRM, PRM, PRM_DISCONNECT_EVENT, NULL, 0, portMAX_DELAY));
-                motor_3508->set_motor_status(1, MOTOR_DISABLED_LOCKED);
-            };
-            break;
+            // set motor status to MOTOR_NORMAL_PENDING
+            motor_3508->set_motor_status(CONFIG_DEFAULT_MOTOR_ID, MOTOR_NORMAL_PENDING);
+            // set speed to 60 in rpm
+            motor_3508->set_speed(CONFIG_DEFAULT_MOTOR_ID, 150);
+        }
+        else if (start_data->mode == 1)
+        {
+            // set motor status to MOTOR_TRACE_SIN_PENDING
+            motor_3508->set_motor_status(CONFIG_DEFAULT_MOTOR_ID, start_data->amplitude, start_data->omega, start_data->offset);
+        }
+        else
+        {
+            err = ESP_ERR_INVALID_ARG;
         };
+        // post PRM_START_DONE_EVENT
+        ESP_ERROR_CHECK(esp_event_post_to(loop_PRM, PRM, PRM_START_DONE_EVENT, NULL, 0, portMAX_DELAY));
+        break;
+    }
+    case PRM_STOP_EVENT:
+        ESP_LOGI(TAG, "PRM_STOP_EVENT");
+        motor_3508->set_motor_status(CONFIG_DEFAULT_MOTOR_ID, MOTOR_DISABLED);
+        break;
+    default:
+        break;
     };
 };
 
@@ -105,37 +102,67 @@ extern "C" void app_main(void)
 {
     // TODO 使用event_data传入数据?
     // 电机数量
-     uint8_t motor_counts = 1; 
+    uint8_t motor_counts = 1;
     // 电机控制器初始化 和 id 数组
     // 一个电机，ID为1
-    uint8_t id[motor_counts] = {1}; 
+    uint8_t id[motor_counts] = {1};
     Motor motor_3508(id, motor_counts);
-    motor_3508.unlock_motor(1);
-    motor_3508.set_speed(1, 2000);
 
     ESP_LOGI(TAG, "setting up");
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     // set event loop args
-    esp_event_loop_args_t loop_with_PRM_args = {
-        .queue_size = 7,
+    esp_event_loop_args_t loop_PRM_args = {
+        .queue_size = 4,
         .task_name = "PRM",
         .task_priority = uxTaskPriorityGet(NULL),
         .task_stack_size = 8192,
-        .task_core_id = tskNO_AFFINITY
-    };
-    
+        .task_core_id = tskNO_AFFINITY};
+
     // create event loop with task PRM
-    ESP_ERROR_CHECK(esp_event_loop_create(&loop_with_PRM_args, &loop_with_PRM));
+    ESP_ERROR_CHECK(esp_event_loop_create(&loop_PRM_args, &loop_PRM));
 
     // register event PRM handler, transfer motor_3508 to handler_args
-    ESP_ERROR_CHECK(esp_event_handler_register_with(loop_with_PRM, PRM, ESP_EVENT_ANY_ID, PRM_event_handler, &motor_3508));
+    ESP_ERROR_CHECK(esp_event_handler_register_with(loop_PRM, PRM, ESP_EVENT_ANY_ID, PRM_event_handler, &motor_3508));
     // register event loop check handler
-    ESP_ERROR_CHECK(esp_event_handler_register_with(loop_with_PRM, PRM, ESP_EVENT_ANY_ID, check_loop, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register_with(loop_PRM, PRM, ESP_EVENT_ANY_ID, check_loop, NULL));
 
     // post check_loop event
-    ESP_ERROR_CHECK(esp_event_post_to(loop_with_PRM, TAG, 1, NULL, 0, portMAX_DELAY));
+    ESP_LOGI(TAG, "posting check_loop event");
+    ESP_ERROR_CHECK(esp_event_post_to(loop_PRM, TAG, 1, NULL, 0, portMAX_DELAY));
+
+    // Unit Test, Post PRM_UNLOCK_EVENT
+    ESP_LOGI(TAG, "posting PRM_UNLOCK_EVENT");
+    ESP_ERROR_CHECK(esp_event_post_to(loop_PRM, PRM, PRM_UNLOCK_EVENT, NULL, 0, portMAX_DELAY));
+    // Unit Test, Post PRM_START_EVENT
+    ESP_LOGI(TAG, "posting PRM_START_EVENT");
+    struct PRM_START_DONE_EVENT_DATA start_data = {
+        .mode = 0,
+    };
+    ESP_ERROR_CHECK(esp_event_post_to(loop_PRM, PRM, PRM_START_EVENT, &start_data, sizeof(struct PRM_START_DONE_EVENT_DATA), portMAX_DELAY));
+    // Wait for 10S
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+    // Unit Test, Post PRM_STOP_EVENT
+    ESP_LOGI(TAG, "posting PRM_STOP_EVENT");
+    ESP_ERROR_CHECK(esp_event_post_to(loop_PRM, PRM, PRM_STOP_EVENT, NULL, 0, portMAX_DELAY));
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+
+    // Unit Test, Post PRM_START_EVENT
+    ESP_LOGI(TAG, "posting PRM_START_EVENT");
+    start_data.mode = 1;
+    start_data.amplitude = 1.045;
+    start_data.omega = 1.884;
+    start_data.offset = 2.090 - start_data.amplitude;
+    ESP_ERROR_CHECK(esp_event_post_to(loop_PRM, PRM, PRM_START_EVENT, &start_data, sizeof(struct PRM_START_DONE_EVENT_DATA), portMAX_DELAY));
+
+    // Wait for 10S
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+    // Unit Test, Post PRM_STOP_EVENT
+    ESP_LOGI(TAG, "posting PRM_STOP_EVENT");
+    ESP_ERROR_CHECK(esp_event_post_to(loop_PRM, PRM, PRM_STOP_EVENT, NULL, 0, portMAX_DELAY));
 
     while (1)
     {
@@ -143,5 +170,4 @@ extern "C" void app_main(void)
     }
 
     // ESP_ERROR_CHECK(esp_event_post_to(loop_with_task, TAG, 1, NULL, 0, portMAX_DELAY));
-
 }
