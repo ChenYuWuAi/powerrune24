@@ -1,0 +1,32 @@
+{
+    "configurations": [
+        {
+            "name": "ESP-IDF",
+            "compilerPath": "${config:idf.toolsPath}/tools/riscv32-esp-elf/esp-12.2.0_20230208/riscv32-esp-elf/bin/riscv32-esp-elf-gcc",
+            "includePath": [
+                "${config:idf.espIdfPath}/components/**",
+                "${config:idf.espIdfPathWin}/components/**",
+                "${config:idf.espAdfPath}/components/**",
+                "${config:idf.espAdfPathWin}/components/**",
+                "${workspaceFolder}/**",
+                "/home/ubiks/esp/esp-idf/components/freertos/FreeRTOS-Kernel-SMP/include/freertos",
+                "/home/ubiks/esp/esp-idf/components/freertos/FreeRTOS-Kernel/include/freertos",
+                "${workspaceFolder}/main/MiniPID",
+                "${workspaceFolder}/main",
+                "${workspaceFolder}/main"
+            ],
+            "browse": {
+                "path": [
+                    "${config:idf.espIdfPath}/components",
+                    "${config:idf.espIdfPathWin}/components",
+                    "${config:idf.espAdfPath}/components/**",
+                    "${config:idf.espAdfPathWin}/components/**",
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": false
+            },
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+        }
+    ],
+    "version": 4
+}
