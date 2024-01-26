@@ -11,6 +11,8 @@
 #include "PowerRune_Events.h"
 #include "motor_ctrl.h"
 
+
+
 // ESP_EVENT_DECLARE_BASE(PRM);
 // enum
 // {
@@ -51,48 +53,64 @@ static void check_loop(void* handler_args, esp_event_base_t base, int32_t id, vo
 // ESP_EVENT_DEFINE_BASE(PRM);
 
 // define event base handler function
-static void PRM_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
+static void PRM_event_handler(void* handler_args, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
-    if (base == PRM)
+    // set handler_args to motor_3508
+    Motor* motor_3508 = (Motor*)handler_args;
+
+    if (event_base == PRM)
     {
-        switch (id)
+        switch (event_id)
         {
         case PRM_UNLOCK_EVENT:
             ESP_LOGI(TAG, "PRM_UNLOCK_EVENT");
-            break;
-        case PRM_UNLOCK_DONE_EVENT:
-            ESP_LOGI(TAG, "PRM_UNLOCK_DONE_EVENT");
-            break;
-        case PRM_SPEED_STABLE_EVENT:
-            ESP_LOGI(TAG, "PRM_SPEED_STABLE_EVENT");
+            // TODO if motor status is MOTOR_DISABLED_LOCKED
+            // TODO
+            // set motor status to MOTOR_DISABLED
+            motor_3508->unlock_motor(1);
+            // TODO motor_3508->set_motor_status(1, MOTOR_DISABLED);
+            // post PRM_UNLOCK_DONE_EVENT
+            ESP_ERROR_CHECK(esp_event_post_to(loop_with_PRM, PRM, PRM_UNLOCK_DONE_EVENT, NULL, 0, portMAX_DELAY));
             break;
         case PRM_START_EVENT:
             ESP_LOGI(TAG, "PRM_START_EVENT");
-            break;
-        case PRM_START_DONE_EVENT:
-            ESP_LOGI(TAG, "PRM_START_DONE_EVENT");
+            // set motor status to MOTOR_NORMAL_PENDING & MOTOR_TRACE_SIN_PENDING
+            motor_3508->set_motor_status(1, MOTOR_NORMAL_PENDING);
+            motor_3508->set_motor_status(1, MOTOR_TRACE_SIN_PENDING);
+            // post PRM_START_DONE_EVENT
+            ESP_ERROR_CHECK(esp_event_post_to(loop_with_PRM, PRM, PRM_START_DONE_EVENT, NULL, 0, portMAX_DELAY));
             break;
         case PRM_STOP_EVENT:
             ESP_LOGI(TAG, "PRM_STOP_EVENT");
             break;
         case PRM_DISCONNECT_EVENT:
-            ESP_LOGI(TAG, "PRM_DISCONNECT_EVENT");
+            // if motor status is MOTOR_DISABLED_LOCKED, post PRM_DISCONNECT_EVENT
+            if(motor_3508->get_motor_status(1) == MOTOR_DISABLED_LOCKED)
+            {
+                ESP_ERROR_CHECK(esp_event_post_to(loop_with_PRM, PRM, PRM_DISCONNECT_EVENT, NULL, 0, portMAX_DELAY));
+            };
             break;
         default:
+            // if motor status is MOTOR_DISCONNECTED or MOTOR_NORMAL_PENDING or MOTOR_DISABLED or MOTOR_TRACE_SIN_STABLE, post PRM_DISCONNECT_EVENT, set motor status to MOTOR_DISABLED_LOCKED
+            if(motor_3508->get_motor_status(1) == (MOTOR_DISCONNECTED || MOTOR_NORMAL_PENDING || MOTOR_DISABLED || MOTOR_TRACE_SIN_STABLE))
+            {
+                ESP_ERROR_CHECK(esp_event_post_to(loop_with_PRM, PRM, PRM_DISCONNECT_EVENT, NULL, 0, portMAX_DELAY));
+                motor_3508->set_motor_status(1, MOTOR_DISABLED_LOCKED);
+            };
             break;
-        }
-    }
+        };
+    };
 };
-
 
 extern "C" void app_main(void)
 {
-    uint8_t motor_counts = 1; // 电机数量
-    // 电机控制器初始化
-    // id 数组
-    uint8_t id[motor_counts] = {1}; // 一个电机，ID为1
-
-    Motor motor_3508(id, motor_counts, GPIO_NUM_4, GPIO_NUM_5);
+    // TODO 使用event_data传入数据?
+    // 电机数量
+     uint8_t motor_counts = 1; 
+    // 电机控制器初始化 和 id 数组
+    // 一个电机，ID为1
+    uint8_t id[motor_counts] = {1}; 
+    Motor motor_3508(id, motor_counts);
     motor_3508.unlock_motor(1);
     motor_3508.set_speed(1, 2000);
 
@@ -100,25 +118,24 @@ extern "C" void app_main(void)
 
     // set event loop args
     esp_event_loop_args_t loop_with_PRM_args = {
-        .queue_size = 5,
-        .task_name = "PowerruneMotor",
+        .queue_size = 7,
+        .task_name = "PRM",
         .task_priority = uxTaskPriorityGet(NULL),
         .task_stack_size = 3072,
         .task_core_id = tskNO_AFFINITY
     };
     
+    // create event loop with task PRM
+    ESP_ERROR_CHECK(esp_event_loop_create(&loop_with_PRM_args, &loop_with_PRM));
+
+    // register event PRM handler, transfer 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(loop_with_PRM, PRM, ESP_EVENT_ANY_ID, PRM_event_handler, &motor_3508, NULL));
+    
+    ESP_ERROR_CHECK(esp_event_post(PRM, PRM_UNLOCK_EVENT, &motor_3508, sizeof(motor_3508), portMAX_DELAY));
     // while (1)
     // {
     //     vTaskDelay(1000 / portTICK_PERIOD_MS);
     // }
-
-    // // Create the event loops
-    // ESP_ERROR_CHECK(esp_event_loop_create(&loop_with_task_args, &loop_with_task));
-    // ESP_ERROR_CHECK(esp_event_loop_create(&loop_without_task_args, &loop_without_task));
-
-    // // Register the handler for task iteration event. Notice that the same handler is used for handling event on different loops.
-    // // The loop handle is provided as an argument in order for this example to display the loop the handler is being run on.
-    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(loop_with_task, TAG, ESP_EVENT_ANY_ID, check_loop, loop_with_task, NULL));
 
     // ESP_ERROR_CHECK(esp_event_post_to(loop_with_task, TAG, 1, NULL, 0, portMAX_DELAY));
 

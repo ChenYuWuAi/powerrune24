@@ -157,7 +157,38 @@ private:
         tx_msg.data[7] = current_info.iq4;
 
         ESP_ERROR_CHECK(twai_transmit(&tx_msg, portMAX_DELAY));
-    }
+    };
+
+    // 当速度当前值与速度设定值之间的误差在一定的FreeRTOS系统tick的时间段内小于一定范围时
+    // 电机状态从MOTOR_NORMAL_PENDING转换为MOTOR_NORMAL, 或者电机状态从MOTOR_TRACE_SIN_PENDING转换为MOTOR_TRACE_SIN_STABLE
+    static void speed_stable_check()
+    {
+        static uint32_t current_tick = 0;
+        current_tick = xTaskGetTickCount();
+        ESP_LOGI(TAG_TWAI, "Current tick: %lu", current_tick);
+
+        for (size_t i = 0; i < motor_counts; i++)
+        {
+            if (motor_info[i].motor_status == MOTOR_NORMAL_PENDING)
+            {
+                if (abs(motor_info[i].speed - motor_info[i].set_speed) < 100)
+                {
+                    motor_info[i].motor_status = MOTOR_NORMAL;
+                    ESP_LOGI(TAG_TWAI, "Motor %d speed stable.", motor_info[i].motor_id);
+                }
+            }
+            else if (motor_info[i].motor_status == MOTOR_TRACE_SIN_PENDING)
+            {
+                if (abs(motor_info[i].speed - motor_info[i].set_speed) < 100)
+                {
+                    motor_info[i].motor_status = MOTOR_TRACE_SIN_STABLE;
+                    ESP_LOGI(TAG_TWAI, "Motor %d speed stable.", motor_info[i].motor_id);
+                }
+            }
+        }
+    };
+
+
 
 public:
     /**
@@ -332,6 +363,32 @@ public:
         return ESP_ERR_INVALID_ARG;
     };
 
+    /**
+     * @brief get motor status
+    */
+    motor_status_t get_motor_status(uint8_t motor_id)
+    {
+        state_check();
+        return motor_info[motor_id].motor_status;
+    };
+
+    // TODO
+    /**
+     * @brief set motor status
+    */
+    esp_err_t set_motor_status(uint8_t motor_id, motor_status_t motor_status)
+    {
+        for (size_t i = 0; i < motor_counts; i++)
+        {
+            if (motor_info[i].motor_id == motor_id)
+            {
+                motor_info[i].motor_status = motor_status;
+                return ESP_OK;
+            }
+        }
+        return ESP_ERR_INVALID_ARG;
+    };
+
 protected:
     static motor_info_t *motor_info;
     static size_t motor_counts;
@@ -409,6 +466,7 @@ protected:
         while (1)
         {
             state_check();
+            speed_stable_check();
             for (size_t i = 0; i < motor_counts; i++)
             {
                 ESP_LOGI(TAG_TWAI, "Motor %d status: %d", motor_info[i].motor_id, motor_info[i].motor_status);
