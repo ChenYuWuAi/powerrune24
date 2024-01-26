@@ -6,8 +6,9 @@
  * @author CH
  * @note 改编自官方示例
  */
-#define ENABLE_DMA // S3库需要使能该宏定义，C3库不需要
-
+// #define ENABLE_DMA // S3库需要使能该宏定义，C3库不需要
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_err.h"
 #include "esp_check.h"

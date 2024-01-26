@@ -48,7 +48,7 @@ extern "C" void app_main(void)
     ESP_LOGI(TAG, "Unit Test Start");
 
     // LED Blink Code
-    LED blink(GPIO_NUM_48, 1, 2, 5);
+    LED blink(GPIO_NUM_48, 1, 2, 2);
 
     // GPIO 0 for test
     gpio_config_t io_conf;
@@ -63,18 +63,6 @@ extern "C" void app_main(void)
     // LSB - - - MSB, EN
     DEMUX_LED.enable();
     DEMUX_LED = 0;
-
-    // // Red
-    // LED_color_info_t LED_Red;
-    // LED_Red = {0, 255, 0};
-
-    // // Green
-    // LED_color_info_t LED_Green;
-    // LED_Green = {255, 0, 0};
-
-    // // Blue
-    // LED_color_info_t LED_Blue;
-    // LED_Blue = {0, 0, 255};
 
     // create task
     TaskHandle_t LED_update_task_handle;
