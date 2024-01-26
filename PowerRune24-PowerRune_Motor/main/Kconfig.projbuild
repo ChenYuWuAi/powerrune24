@@ -26,4 +26,10 @@ menu "CAN lib Configuration"
         help
             This option selects the default motor ID.
 
+    config DEFAULT_MOTOR_NORMAL_RPM
+        int "Default motor RPM for mode 0"
+        default 1140
+        help
+            This option selects the default motor ID.
+
 endmenu

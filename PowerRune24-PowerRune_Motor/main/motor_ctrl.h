@@ -77,7 +77,6 @@ typedef enum
 typedef struct
 {
     int16_t set_speed;
-    int16_t set_current;
     int16_t speed;
     int16_t current;
     int16_t torque;
@@ -148,6 +147,7 @@ private:
         tx_msg.data_length_code = 8;
         tx_msg.identifier = 0x200;
 
+        ESP_LOGI(TAG_TWAI, "Motor 1: %i, %i, %i, %i", current_info.iq1, current_info.iq2, current_info.iq3, current_info.iq4);
         tx_msg.data[0] = current_info.iq1 >> 8;
         tx_msg.data[1] = current_info.iq1;
         tx_msg.data[2] = current_info.iq2 >> 8;
@@ -189,8 +189,11 @@ public:
     /**
      * @brief 初始化电机, 需要在主函数手动设置motor_counts, TX和RX的IO口, PID初始化是否正确? 数据输入包含PID初始化
      */
-    Motor(uint8_t *motor_id, uint8_t motor_counts = 1, gpio_num_t TX_TWAI_GPIO = GPIO_NUM_4, gpio_num_t RX_TWAI_GPIO = GPIO_NUM_5, float Kp = 1, float Ki = 0.0, float Kd = 0.0, float Pmax = 1000, float Imax = 1000, float Dmax = 1000, float max = 15000) : PID(Kp, Ki, Kd, Pmax, Imax, Dmax, max)
+    Motor(uint8_t *motor_id, uint8_t motor_counts = 1, gpio_num_t TX_TWAI_GPIO = GPIO_NUM_4, gpio_num_t RX_TWAI_GPIO = GPIO_NUM_5, float Kp = 1.2, float Ki = 0.2, float Kd = 0.5, float Pmax = 1000, float Imax = 1000, float Dmax = 1000, float max = 2000) : PID(Kp, Ki, Kd, Pmax, Imax, Dmax, max)
     {
+        this->motor_counts = motor_counts;
+        motor_info = new motor_info_t[motor_counts];
+        memset(motor_info, 0, sizeof(motor_info_t) * motor_counts);
         this->TX_TWAI_GPIO = TX_TWAI_GPIO;
         this->RX_TWAI_GPIO = RX_TWAI_GPIO;
 
@@ -200,7 +203,18 @@ public:
             .acceptance_mask = (0xFFFFFFFF),
             .single_filter = true,
         };
-        twai_general_config_t general_config = TWAI_GENERAL_CONFIG_DEFAULT(TX_TWAI_GPIO, RX_TWAI_GPIO, TWAI_MODE_NO_ACK);
+        twai_general_config_t general_config = {
+            .mode = TWAI_MODE_NO_ACK,
+            .tx_io = TX_TWAI_GPIO,
+            .rx_io = RX_TWAI_GPIO,
+            .clkout_io = ((gpio_num_t)-1),
+            .bus_off_io = ((gpio_num_t)-1),
+            .tx_queue_len = 5,
+            .rx_queue_len = 1,
+            .alerts_enabled = 0x00000000,
+            .clkout_divider = 0,
+            .intr_flags = (1 << 1),
+        };
 
         if (twai_driver_install(&general_config, &timing_config, &filter_config) != ESP_OK)
         {
@@ -214,15 +228,11 @@ public:
 
         ESP_LOGI("TWAI", "TWAI initialized.");
 
-        motor_info = new motor_info_t[motor_counts];
-        this->motor_counts = motor_counts;
-
         // init motor_info
         for (size_t i = 0; i < motor_counts; i++)
         {
             motor_info[i].motor_id = i;
             motor_info[i].set_speed = 0;
-            motor_info[i].set_current = 0;
             motor_info[i].speed = 0;
             motor_info[i].current = 0;
             motor_info[i].torque = 0;
@@ -237,7 +247,7 @@ public:
             ESP_LOGI(TAG_TWAI, "Motor %d ID set to %d.\n", i, motor_id[i]);
         }
 
-        BaseType_t task_created = xTaskCreate(this->task_motor, "task_motor", 8192, this, 5, NULL);
+        BaseType_t task_created = xTaskCreate(Motor::task_motor, "task_motor", 8192, this, 10, NULL);
         if (task_created == pdPASS)
         {
             ESP_LOGI(TAG_TWAI, "TWAI task created.\n");
@@ -252,8 +262,7 @@ public:
      * @brief 设置电机ID, 使电机ID与motor_info内顺序一致
      * @param index, ID(0-1)
      */
-    esp_err_t
-    set_id(uint8_t index, uint8_t id)
+    esp_err_t set_id(uint8_t index, uint8_t id)
     {
         if (id > 4)
             return ESP_ERR_INVALID_ARG;
@@ -294,7 +303,6 @@ public:
             if (motor_info[i].motor_id == motor_id)
             {
                 motor_info[i].set_speed = 0;
-                motor_info[i].set_current = 0;
                 motor_info[i].speed = 0;
                 motor_info[i].current = 0;
                 motor_info[i].torque = 0;
@@ -436,8 +444,8 @@ protected:
                 motor_info[i].last_received = xTaskGetTickCount();
                 if (motor_info[i].motor_id == motor_id)
                 {
-                    motor_info[i].speed = (twai_msg_re.data[2] << 8) | twai_msg_re.data[3];
-                    motor_info[i].current = (twai_msg_re.data[4] << 8) | twai_msg_re.data[5];
+                    motor_info[i].speed = (int16_t)(twai_msg_re.data[2] << 8 | twai_msg_re.data[3]);
+                    motor_info[i].current = (int16_t)(twai_msg_re.data[4] << 8 | twai_msg_re.data[5]);
                     motor_info[i].temp = twai_msg_re.data[6];
 
                     // 将DISCONNECTED状态更新为DISABLED_LOCKED状态
@@ -446,8 +454,7 @@ protected:
                         motor_info[i].motor_status = MOTOR_DISABLED_LOCKED;
                     }
                     // 按照一定的时间间隔打印电机状态
-                    if ((current_tick % (500 * portTICK_PERIOD_MS)) == 0)
-                        ESP_LOGI(TAG_TWAI, "Motor %d State: Speed %d, Current %d, Temp %d .", motor_id, motor_info[i].speed, motor_info[i].current, motor_info[i].temp);
+                    ESP_LOGI(TAG_TWAI, "Motor %d State: Speed %d, Current %d, Temp %d .", motor_id, motor_info[i].speed, motor_info[i].current, motor_info[i].temp);
                 }
             }
         }
@@ -470,13 +477,15 @@ protected:
     /**
      * @brief FreeRTOS Task: 控制电机运动，同时接受电机状态
      */
-    static void task_motor(void *args)
+    static void
+    task_motor(void *args)
     {
         Motor *motor_ctrl = (Motor *)args;
         current_info_t current_info;
         memset(&current_info, 0, sizeof(current_info_t));
-
-        double PID_CURRENT = 0;
+        // 服务缓启动
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        float PID_CURRENT = 0;
 
         while (1)
         {
@@ -498,7 +507,7 @@ protected:
 
                 case MOTOR_NORMAL:
                 case MOTOR_NORMAL_PENDING:
-                    PID_CURRENT = motor_ctrl->get_output(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed);
+                    PID_CURRENT = (motor_ctrl->get_output(motor_ctrl->motor_info[i].speed, motor_ctrl->motor_info[i].set_speed));
                     set_current(motor_info[i].motor_id, PID_CURRENT, current_info);
                     break;
 
@@ -510,7 +519,7 @@ protected:
                              sinf(motor_info[i].speed_trace_sin_info.omega *
                                   (xTaskGetTickCount() - motor_info[i].speed_trace_sin_info.start_tick) / (float)CONFIG_FREERTOS_HZ) +
                          motor_info[i].speed_trace_sin_info.offset) *
-                        30 / (2 * M_PI);
+                        3420 / M_PI;
                     PID_CURRENT = motor_ctrl->get_output(motor_ctrl->motor_info[i].speed, motor_info[i].set_speed);
                     set_current(motor_info[i].motor_id, PID_CURRENT, current_info);
                     break;
@@ -519,9 +528,9 @@ protected:
                 };
             };
             send_motor_current(current_info);
-            vTaskDelay(1 / portTICK_PERIOD_MS);
+            vTaskDelay(2 / portTICK_PERIOD_MS);
             // LOG MOTOR_INFO_t
-            ESP_LOGI(TAG_TWAI, "Motor 1: %i, %i, %i, %i, %i, %i, %i, %i", motor_info[0].set_speed, motor_info[0].set_current, motor_info[0].speed, motor_info[0].current, motor_info[0].torque, motor_info[0].temp, motor_info[0].motor_id, motor_info[0].motor_status);
+            ESP_LOGI(TAG_TWAI, "Motor 1: %i, %i, %i, %i, %i, %i, %i", motor_info[0].set_speed, motor_info[0].speed, motor_info[0].current, motor_info[0].torque, motor_info[0].temp, motor_info[0].motor_id, motor_info[0].motor_status);
         };
         vTaskDelete(NULL);
     };

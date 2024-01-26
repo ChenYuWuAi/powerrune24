@@ -11,6 +11,8 @@
 #include "PowerRune_Events.h"
 #include "motor_ctrl.h"
 
+#include "LED.h"
+
 // ESP_EVENT_DECLARE_BASE(PRM);
 // enum
 // {
@@ -73,8 +75,8 @@ static void PRM_event_handler(void *handler_args, esp_event_base_t event_base, i
         {
             // set motor status to MOTOR_NORMAL_PENDING
             motor_3508->set_motor_status(CONFIG_DEFAULT_MOTOR_ID, MOTOR_NORMAL_PENDING);
-            // set speed to 60 in rpm
-            motor_3508->set_speed(CONFIG_DEFAULT_MOTOR_ID, 150);
+            // set speed to 1140 in rpm
+            motor_3508->set_speed(CONFIG_DEFAULT_MOTOR_ID, 1140); // CONFIG_DEFAULT_NORMAL_MOTOR_RPM);
         }
         else if (start_data->mode == 1)
         {
@@ -102,12 +104,14 @@ extern "C" void app_main(void)
 {
     // TODO 使用event_data传入数据?
     // 电机数量
+    LED led_1(GPIO_NUM_2, 1, 1, 0);
     uint8_t motor_counts = 1;
     // 电机控制器初始化 和 id 数组
     // 一个电机，ID为1
     uint8_t id[motor_counts] = {1};
     Motor motor_3508(id, motor_counts);
 
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
     ESP_LOGI(TAG, "setting up");
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -160,9 +164,9 @@ extern "C" void app_main(void)
     // Wait for 10S
     vTaskDelay(10000 / portTICK_PERIOD_MS);
 
-    // Unit Test, Post PRM_STOP_EVENT
-    ESP_LOGI(TAG, "posting PRM_STOP_EVENT");
-    ESP_ERROR_CHECK(esp_event_post_to(loop_PRM, PRM, PRM_STOP_EVENT, NULL, 0, portMAX_DELAY));
+    // // Unit Test, Post PRM_STOP_EVENT
+    // ESP_LOGI(TAG, "posting PRM_STOP_EVENT");
+    // ESP_ERROR_CHECK(esp_event_post_to(loop_PRM, PRM, PRM_STOP_EVENT, NULL, 0, portMAX_DELAY));
 
     while (1)
     {
