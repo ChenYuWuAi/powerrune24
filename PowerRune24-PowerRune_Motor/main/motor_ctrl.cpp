@@ -92,7 +92,7 @@ static void PRM_event_handler(void* handler_args, esp_event_base_t event_base, i
             break;
         default:
             // if motor status is MOTOR_DISCONNECTED or MOTOR_NORMAL_PENDING or MOTOR_DISABLED or MOTOR_TRACE_SIN_STABLE, post PRM_DISCONNECT_EVENT, set motor status to MOTOR_DISABLED_LOCKED
-            if(motor_3508->get_motor_status(1) == (MOTOR_DISCONNECTED || MOTOR_NORMAL_PENDING || MOTOR_DISABLED || MOTOR_TRACE_SIN_STABLE))
+            if(((motor_3508->get_motor_status(1) == MOTOR_DISCONNECTED) || (motor_3508->get_motor_status(1) == MOTOR_NORMAL_PENDING) || (motor_3508->get_motor_status(1) == MOTOR_DISABLED) || (motor_3508->get_motor_status(1) == MOTOR_TRACE_SIN_STABLE)))
             {
                 ESP_ERROR_CHECK(esp_event_post_to(loop_with_PRM, PRM, PRM_DISCONNECT_EVENT, NULL, 0, portMAX_DELAY));
                 motor_3508->set_motor_status(1, MOTOR_DISABLED_LOCKED);

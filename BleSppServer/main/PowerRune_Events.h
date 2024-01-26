@@ -30,13 +30,7 @@ enum
 {
     OTA_BEGIN_EVENT,
     OTA_COMPLETE_EVENT,
-    STATE_LED_IDLE,
-    STATE_LED_PENDING,
     PING_EVENT,
-    MOTOR_DISABLE_LOCKED,
-    OTA_PENDING,
-    task_OTA,
-    MOTOR_DISABLED,
 };
 
 // Armour事件
