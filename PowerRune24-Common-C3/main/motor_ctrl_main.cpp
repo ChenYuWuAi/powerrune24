@@ -11,18 +11,18 @@
 #include "esp_event_base.h"
 #include "motor_ctrl.h"
 
-// static const char* TAG_EVENT = "powerrune_motor";
+// event TAG
+static const char* TAG = "PRM";
 
-// event loops
-// esp_event_loop_handle_t loop_with_task;
+// create event loop with task PRM
+esp_event_loop_handle_t loop_with_PRM;
 
-// void check_loop(void* handler_args, esp_event_base_t base, int32_t id, void* event_data) {
-//     ESP_LOGI(TAG, "OK.");
-// }
-// *esp_event_handler_t)(void* event_handler_arg,
-//                                         esp_event_base_t event_base,
-//                                         int32_t event_id,
-//                                         void* event_data)
+// check event loop: loop_with_PRM
+static void check_loop(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
+{
+    esp_event_loop_handle_t loop = (esp_event_loop_handle_t)handler_args;
+    ESP_LOGI(TAG, "Event in loop: %p ", loop);
+};
 
 extern "C" void app_main(void)
 {
@@ -34,12 +34,19 @@ extern "C" void app_main(void)
     Motor motor_3508(id, motor_counts, GPIO_NUM_4, GPIO_NUM_5);
     motor_3508.unlock_motor(1);
     motor_3508.set_speed(1, 2000);
-    // 
+    // set event loop args
+    esp_event_loop_args_t loop_with_PRM_args = {
+        .queue_size = 5,
+        .task_name = "PowerruneMotor",
+        .task_priority = uxTaskPriorityGet(NULL),
+        .task_stack_size = 3072,
+        .task_core_id = tskNO_AFFINITY
+    };
     
-    while (1)
-    {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
+    // while (1)
+    // {
+    //     vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // }
 
     // ESP_LOGI(TAG, "setting up");
 
