@@ -38,6 +38,28 @@ public:
     // get output, return float, input float feedback, input float target
     float get_output(float feedback_input, float target_input)
     {
+        // error = target - feedback_input;
+        // Pout = Kp * error;
+        // Iout += Ki * error;
+        // if (Iout > Imax)
+        //     Iout = Imax;
+        // else if (Iout < -Imax)
+        //     Iout = -Imax;
+        // Dout = Kd * (error - error_last);
+        // if (Dout > Dmax)
+        //     Dout = Dmax;
+        // else if (Dout < -Dmax)
+        //     Dout = -Dmax;
+
+        // output = Pout + Iout + Dout;
+        // if (output > outputMax)
+        //     output = outputMax;
+        // else if (output < -outputMax)
+        //     output = - outputMax;
+        // error_last = error;
+
+        // return output;
+
         target = target_input;
         error = target - feedback_input;
 
