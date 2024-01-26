@@ -21,6 +21,17 @@
 // LOG TAG
 static const char *TAG_FIRMWARE = "Firmware";
 
+// 宏定义解算配置文件结构体
+#if CONFIG_POWERRUNE_TYPE == 0
+struct PowerRune_Armour_config_info_t
+{
+    uint8_t brightness;
+    uint8_t armour_id;
+    uint8_t brightness_proportion_matrix;
+    uint8_t brightness_proportion_edge;
+};
+#endif
+
 // Common Config
 struct PowerRune_Common_config_info_t
 {
@@ -115,7 +126,6 @@ template <typename PowerRune_config_info_t>
 class Firmware : public Config<PowerRune_config_info_t>
 {
 private:
-
     enum PR_type
     {
         ARMOUR,
@@ -134,6 +144,21 @@ private:
 public:
     Firmware()
     {
+        // 通过CONFIG_POWERRUNE_TYPE宏定义解算出board_type
+        switch (CONFIG_POWERRUNE_TYPE)
+        {
+        case 0:
+            board_info.board_type = ARMOUR;
+            break;
+        case 1:
+            board_info.board_type = RLOGO;
+            break;
+        case 2:
+            board_info.board_type = MOTORCTL;
+            break;
+        default:
+            break;
+        }
     }
 
     esp_err_t task_OTA()
