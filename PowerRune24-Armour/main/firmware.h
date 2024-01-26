@@ -1,6 +1,6 @@
 /**
  * @file firmware.h
- * @brief 大符固件库，支持Flash Config读写、OTA升级
+ * @brief 大符固件支持库，支持Flash Config读写、OTA升级
  * @version 1
  * @date 2024-01-25
  */
@@ -16,6 +16,8 @@
 // Common
 #include "esp_event.h"
 #include "esp_log.h"
+// 大符事件
+#include "PowerRune_event.h"
 
 // Wifi & OTA
 #include "esp_system.h"
@@ -155,6 +157,8 @@ private:
 public:
     Firmware()
     {
+        // 上电初始化逻辑
+
         // 读取版本号
         esp_app_desc_t app_desc;
         esp_err_t err = esp_ota_get_partition_description(esp_ota_get_running_partition(), &app_desc);
@@ -181,9 +185,8 @@ public:
 #endif
         board_info.config = config_info;
 
-        // ESP_NOW Initialize
-        ESP_ERROR_CHECK(esp_now_init());
-        
+        // 使能Wifi，为OTA和ESP-NOW做准备
+        wifi_init_sta();
 
         // 自动更新
         if (config_common_info.auto_update)
