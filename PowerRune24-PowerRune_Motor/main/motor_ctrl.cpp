@@ -43,10 +43,9 @@ static const char* TAG = "PRM";
 esp_event_loop_handle_t loop_with_PRM;
 
 // check event loop: loop_with_PRM
-static void check_loop(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
+static void check_loop(void* handler_args, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
-    esp_event_loop_handle_t loop = (esp_event_loop_handle_t)handler_args;
-    ESP_LOGI(TAG, "Event in loop: %p ", loop);
+    ESP_LOGI(TAG, "Set done.");
 };
 
 // define event base
@@ -116,26 +115,32 @@ extern "C" void app_main(void)
 
     ESP_LOGI(TAG, "setting up");
 
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+
     // set event loop args
     esp_event_loop_args_t loop_with_PRM_args = {
         .queue_size = 7,
         .task_name = "PRM",
         .task_priority = uxTaskPriorityGet(NULL),
-        .task_stack_size = 3072,
+        .task_stack_size = 8192,
         .task_core_id = tskNO_AFFINITY
     };
     
     // create event loop with task PRM
     ESP_ERROR_CHECK(esp_event_loop_create(&loop_with_PRM_args, &loop_with_PRM));
 
-    // register event PRM handler, transfer 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(loop_with_PRM, PRM, ESP_EVENT_ANY_ID, PRM_event_handler, &motor_3508, NULL));
-    
-    ESP_ERROR_CHECK(esp_event_post(PRM, PRM_UNLOCK_EVENT, &motor_3508, sizeof(motor_3508), portMAX_DELAY));
-    // while (1)
-    // {
-    //     vTaskDelay(1000 / portTICK_PERIOD_MS);
-    // }
+    // register event PRM handler, transfer motor_3508 to handler_args
+    ESP_ERROR_CHECK(esp_event_handler_register_with(loop_with_PRM, PRM, ESP_EVENT_ANY_ID, PRM_event_handler, &motor_3508));
+    // register event loop check handler
+    ESP_ERROR_CHECK(esp_event_handler_register_with(loop_with_PRM, PRM, ESP_EVENT_ANY_ID, check_loop, NULL));
+
+    // post check_loop event
+    ESP_ERROR_CHECK(esp_event_post_to(loop_with_PRM, TAG, 1, NULL, 0, portMAX_DELAY));
+
+    while (1)
+    {
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
+    }
 
     // ESP_ERROR_CHECK(esp_event_post_to(loop_with_task, TAG, 1, NULL, 0, portMAX_DELAY));
 
