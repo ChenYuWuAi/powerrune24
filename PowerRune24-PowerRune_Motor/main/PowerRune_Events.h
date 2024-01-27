@@ -1,3 +1,4 @@
+#pragma once
 #include "esp_event.h"
 
 // 定义events
@@ -30,7 +31,6 @@ enum
 {
     OTA_BEGIN_EVENT,
     OTA_COMPLETE_EVENT,
-    PING_EVENT,
 };
 
 // Armour事件
