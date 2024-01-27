@@ -8,11 +8,11 @@
 #include <esp_err.h>
 #include <esp_log.h>
 #include <esp_event_base.h>
+
 #include "PowerRune_Events.h"
 #include "motor_ctrl.h"
-
 #include "LED.h"
-
+#include "espnow_protocol.h"
 // ESP_EVENT_DECLARE_BASE(PRM);
 // enum
 // {
@@ -95,6 +95,11 @@ static void PRM_event_handler(void *handler_args, esp_event_base_t event_base, i
         ESP_LOGI(TAG, "PRM_STOP_EVENT");
         motor_3508->set_motor_status(CONFIG_DEFAULT_MOTOR_ID, MOTOR_DISABLED);
         break;
+    // 枚举类型数值冲突
+    // case OTA_BEGIN_EVENT:
+    //     ESP_LOGI(TAG, "OTA_BEGIN_EVENT");
+    //     motor_3508->set_motor_status(CONFIG_DEFAULT_MOTOR_ID, MOTOR_DISABLED_LOCKED);
+    //     break;
     default:
         break;
     };
@@ -105,6 +110,7 @@ extern "C" void app_main(void)
     // TODO 使用event_data传入数据?
     // 电机数量
     LED led_1(GPIO_NUM_2, 1, 1, 0);
+
     uint8_t motor_counts = 1;
     // 电机控制器初始化 和 id 数组
     // 一个电机，ID为1

@@ -55,6 +55,7 @@ enum
     PRM_STOP_EVENT,
     PRM_DISCONNECT_EVENT, 
 };
+
 struct PRM_START_DONE_EVENT_DATA
 {
     // mode 0 for normal, 1 for trace sin

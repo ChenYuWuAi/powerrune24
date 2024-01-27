@@ -38,7 +38,7 @@ public:
     // get output, return float, input float feedback, input float target
     float get_output(float feedback_input, float target_input)
     {
-        // error = target - feedback_input;
+        // error = target _input - feedback_input;
         // Pout = Kp * error;
         // Iout += Ki * error;
         // if (Iout > Imax)
