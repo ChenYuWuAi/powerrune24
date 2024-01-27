@@ -97,10 +97,9 @@ static void rx_event_handler(void *handler_args, esp_event_base_t event_base, in
         ESP_ERROR_CHECK(esp_event_post_to(loop_PRM, event_base, ESP_EVENT_ANY_ID, espnow_data_pack->event_data, sizeof(espnow_data_pack->event_data), portMAX_DELAY));     
 }
 
-
 class ESPNowProtocol {
 private:
-    
+    //??
 
 public:
     static esp_err_t parse_data(const uint8_t *data, int len){
@@ -247,7 +246,7 @@ public:
 
     ESPNowProtocol() {
 
-        //数据包ID均未配置!!
+        //数据包ID均未配置!!!
         ESP_ERROR_CHECK(esp_now_init());
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
   
