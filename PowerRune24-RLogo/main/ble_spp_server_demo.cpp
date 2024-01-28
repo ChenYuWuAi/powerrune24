@@ -780,9 +780,24 @@ static void unlk_write_handler(void *handler_args, esp_event_base_t base, int32_
 static void stop_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
 }
+void ota_task()
+{
+    esp_event_post(PRC, OTA_BEGIN_EVENT, NULL, 0, portMAX_DELAY);
 
+    int old_time = xTaskGetTickCount();
+    // while (/*条件*/)
+    // {
+    //     if (xTaskGetTickCount() - old_time >= 2500)
+    //     {//超时
+    //         esp_event_post(PRA, PRA_STOP_EVENT, NULL, 0, portMAX_DELAY);
+    //     }
+    // }
+    vTaskDelete(NULL);
+    //esprestart();
+}
 static void ota_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
+    xTaskCreate((TaskFunction_t)ota_task, "ota_task", 4096, NULL, 10, NULL);
 }
 
 // PowerRune_Events handles
