@@ -34,10 +34,10 @@ menu "PowerRune Project Configuration"
         help
             Maximum time for reception
 
-    config NVS_NAMESPACE
-        string "NVS Namespace"
-        default "powerrune"
+    config PR_NVS_NAMESPACE
+        string "NVS Namespace for PowerRune"
+        default "PowerRune"
         help
-            Namespace for NVS
+            PR Namespace for NVS
 
 endmenu

@@ -14,6 +14,7 @@
 #include <LED.h>
 #include <DEMUX.h>
 #include <driver/gpio.h>
+#include <firmware.h>
 
 const char *TAG = "Unit Test";
 
@@ -48,7 +49,7 @@ extern "C" void app_main(void)
     ESP_LOGI(TAG, "Unit Test Start");
 
     // LED Blink Code
-    LED blink(GPIO_NUM_48, 1, 2, 2);
+    LED blink(GPIO_NUM_48, 1, 2, 5);
 
     // GPIO 0 for test
     gpio_config_t io_conf;
