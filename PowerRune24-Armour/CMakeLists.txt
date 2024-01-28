@@ -4,6 +4,6 @@
 # CMakeLists in this exact order for cmake to work correctly
 cmake_minimum_required(VERSION 3.16)
 
-set(PROJECT_VER "1.0-20240125")
+set(PROJECT_VER "1.0-20240126")
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(PowerRune24-Common-S3)
+project(PowerRune24-Armour)

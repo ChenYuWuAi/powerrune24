@@ -20,7 +20,7 @@ ESP_EVENT_DEFINE_BASE(GPA_EVENTS);
 ESP_EVENT_DEFINE_BASE(UNLK_EVENTS);
 ESP_EVENT_DEFINE_BASE(STOP_EVENTS);
 ESP_EVENT_DEFINE_BASE(OTA_EVENTS);
-// PowerRune_Events
+// PowerRune_Evets
 ESP_EVENT_DEFINE_BASE(PRC);
 ESP_EVENT_DEFINE_BASE(PRA);
 ESP_EVENT_DEFINE_BASE(PRM);
@@ -30,13 +30,7 @@ enum
 {
     OTA_BEGIN_EVENT,
     OTA_COMPLETE_EVENT,
-    STATE_LED_IDLE,
-    STATE_LED_PENDING,
     PING_EVENT,
-    MOTOR_DISABLE_LOCKED,
-    OTA_PENDING,
-    task_OTA,
-    MOTOR_DISABLED,
 };
 
 // Armour事件
@@ -54,10 +48,19 @@ enum
 enum
 {
     PRM_UNLOCK_EVENT,
-    PRM_NULOCK_DONE_EVENT,
-    PRM_SPEED_STABLE_EVENT,
+    PRM_UNLOCK_DONE_EVENT,
     PRM_START_EVENT,
     PRM_START_DONE_EVENT,
+    PRM_SPEED_STABLE_EVENT,
     PRM_STOP_EVENT,
-    PRM_DISCONNECT_EVENT,
+    PRM_DISCONNECT_EVENT, 
+};
+struct PRM_START_DONE_EVENT_DATA
+{
+    // mode 0 for normal, 1 for trace sin
+    int mode;
+    // speed in rpm is 10*19
+    float amplitude;
+    float omega;
+    float offset;
 };

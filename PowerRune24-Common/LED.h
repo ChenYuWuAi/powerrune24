@@ -60,11 +60,12 @@ public:
         LED *led = (LED *)pvParameter;
         while (1)
         {
-
             switch (led->mode)
             {
             case 0:
                 ESP_ERROR_CHECK(gpio_set_level(led->gpio_num, !led->invert));
+                // delete task
+                vTaskDelete(NULL);
                 break;
             case 1:
                 if (led->fade_up)
@@ -167,7 +168,9 @@ public:
         }
 
         ESP_LOGI(TAG_LED, "LED mode: %d, blink_code: %d", mode, blink_code);
-        xTaskCreate(LED::task_LED, "LED_blink_task", 8192, this, tskIDLE_PRIORITY, &task_handle);
+        // create task when mode is not 0
+        if (mode != 0)
+            xTaskCreate(LED::task_LED, "LED_blink_task", 8192, this, tskIDLE_PRIORITY, &task_handle);
     }
 
     /**
@@ -200,6 +203,9 @@ public:
             ESP_ERROR_CHECK(ledc_cb_register(ledc_channel.speed_mode, ledc_channel.channel, &callbacks, this));
         }
         this->mode = mode;
+        // create task when mode is not 0
+        if (mode != 0)
+            xTaskCreate(LED::task_LED, "LED_blink_task", 8192, this, tskIDLE_PRIORITY, &task_handle);
         ESP_LOGI(TAG_LED, "LED mode: %d, blink_code: %d", mode, blink_code);
         return ESP_OK;
     }
@@ -221,8 +227,8 @@ public:
 
     ~LED()
     {
+        vTaskDelete(task_handle);
         ledc_stop(LEDC_LOW_SPEED_MODE, ledc_channel.channel, 0);
         ledc_fade_func_uninstall();
-        vTaskDelete(task_handle);
     }
 };

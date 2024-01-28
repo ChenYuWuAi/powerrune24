@@ -14,6 +14,7 @@
 #include <LED.h>
 #include <DEMUX.h>
 #include <driver/gpio.h>
+#include <firmware.h>
 
 const char *TAG = "Unit Test";
 

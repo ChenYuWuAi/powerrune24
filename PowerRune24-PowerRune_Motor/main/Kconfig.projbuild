@@ -20,4 +20,19 @@ menu "CAN lib Configuration"
             This option selects the GPIO pin used for the RX signal. Connect the
             RX signal to your transceiver.
 
+    config DEFAULT_MOTOR_ID
+        int "Default motor ID"
+        default 1
+        help
+            This option selects the default motor ID.
+
+    config DEFAULT_MOTOR_NORMAL_RPM
+        int "Default motor RPM for mode 0"
+        default 1140
+        help
+            This option selects the default motor ID.
+    
+
+
 endmenu
+

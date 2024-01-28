@@ -1,47 +1,93 @@
-#ifndef PID_H
-#define PID_H
+/**
+ * @file PID.h
+ * @brief PID控制器
+ * @version 0.1
+ */
+#ifndef __PID_H__
+#define __PID_H__
 
-class PIDController {
+class PID
+{
+private:
+    float Kp, Ki, Kd;
+    float Pout, Iout, Dout;
+    float Imax, Dmax;
+    float error, error_last;
+    float outputMax;
+    float target;
+    float output;
+
 public:
-    PIDController(double kp, double ki, double kd)
-        : kp_(kp), ki_(ki), kd_(kd), prev_error_(0), integral_(0) {}
+    PID(float Kp, float Ki, float Kd, float Pmax, float Imax, float Dmax, float max)
+    {
+        this->Kp = Kp;
+        this->Ki = Ki;
+        this->Kd = Kd;
+        this->Imax = Imax;
+        this->Dmax = Dmax;
+        this->outputMax = max;
 
-    double getValue(double current_value, double target_value) {
-        double error = target_value - current_value;
+        error = 0;
+        error_last = 0;
+        Pout = 0;
+        Iout = 0;
+        Dout = 0;
+        output = 0;
+    };
 
-        double P_out = kp_ * error;
+    // get output, return float, input float feedback, input float target
+    float get_output(float feedback_input, float target_input)
+    {
+        // error = target _input - feedback_input;
+        // Pout = Kp * error;
+        // Iout += Ki * error;
+        // if (Iout > Imax)
+        //     Iout = Imax;
+        // else if (Iout < -Imax)
+        //     Iout = -Imax;
+        // Dout = Kd * (error - error_last);
+        // if (Dout > Dmax)
+        //     Dout = Dmax;
+        // else if (Dout < -Dmax)
+        //     Dout = -Dmax;
 
-        integral_ += error;
-        double I_out = ki_ * integral_;
+        // output = Pout + Iout + Dout;
+        // if (output > outputMax)
+        //     output = outputMax;
+        // else if (output < -outputMax)
+        //     output = - outputMax;
+        // error_last = error;
 
-        double derivative = error - prev_error_;
-        double D_out = kd_ * derivative;
+        // return output;
 
-        double output = P_out + I_out + D_out;
+        target = target_input;
+        error = target - feedback_input;
 
-        prev_error_ = error;
+        Pout = Kp * error;
+        Iout += Ki * error;
+        Dout = Kd * (error - error_last);
+
+        if (Iout > Imax)
+            Iout = Imax;
+        else if (Iout < -Imax)
+            Iout = -Imax;
+
+        if (Dout > Dmax)
+            Dout = Dmax;
+        else if (Dout < -Dmax)
+            Dout = -Dmax;
+
+        output = Pout + Iout + Dout;
+
+        if (output > outputMax)
+            output = outputMax;
+        else if (output < -outputMax)
+            output = -outputMax;
+
+        error_last = error;
 
         return output;
     }
-
-    void reset() {
-        prev_error_ = 0;
-        integral_ = 0;
-    }
-
-    void setCoefficients(double kp, double ki, double kd) {
-        kp_ = kp;
-        ki_ = ki;
-        kd_ = kd;
-    }
-
-private:
-    double kp_;
-    double ki_;
-    double kd_;
-
-    double prev_error_; 
-    double integral_; 
 };
 
 #endif

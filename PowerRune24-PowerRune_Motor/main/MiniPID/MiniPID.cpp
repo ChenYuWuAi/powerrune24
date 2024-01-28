@@ -33,7 +33,7 @@ void MiniPID::init(){
 	errorSum=0;
 	maxOutput=0; 
 	minOutput=0;
-	setpoint=0;
+	target=0;
 	lastActual=0;
 	firstRun=true;
 	reversed=false;
@@ -48,13 +48,13 @@ void MiniPID::init(){
 //**********************************
 /**
  * Configure the Proportional gain parameter. <br>
- * this->responds quicly to changes in setpoint, and provides most of the initial driving force
+ * this->responds quicly to changes in target, and provides most of the initial driving force
  * to make corrections. <br>
  * Some systems can be used with only a P gain, and many can be operated with only PI.<br>
  * For position based controllers, this->is the first parameter to tune, with I second. <br>
  * For rate controlled systems, this->is often the second after F.
  *
- * @param p Proportional gain. Affects output according to <b>output+=P*(setpoint-current_value)</b>
+ * @param p Proportional gain. Affects output according to <b>output+=P*(target-current_value)</b>
  */
 void MiniPID::setP(double p){
 	P=p;
@@ -95,7 +95,7 @@ void MiniPID::setD(double d){
 
 /**Configure the FeedForward parameter. <br>
  * this->is excellent for Velocity, rate, and other	continuous control modes where you can 
- * expect a rough output value based solely on the setpoint.<br>
+ * expect a rough output value based solely on the target.<br>
  * Should not be used in "position" based control modes.
  * 
  * @param f Feed forward gain. Affects output according to <b>output+=F*Setpoint</b>;
@@ -106,8 +106,8 @@ void MiniPID::setF(double f){
 }
 
 /** Create a new PID object. 
- * @param p Proportional gain. Large if large difference between setpoint and target. 
- * @param i Integral gain.	Becomes large if setpoint cannot reach target quickly. 
+ * @param p Proportional gain. Large if large difference between target and target. 
+ * @param i Integral gain.	Becomes large if target cannot reach target quickly. 
  * @param d Derivative gain. Responds quickly to large changes in error. Small values prevents P and I terms from causing overshoot.
  */
 void MiniPID::setPID(double p, double i, double d){
@@ -169,37 +169,37 @@ void MiniPID::setDirection(bool reversed){
 //**********************************
 
 /**Set the target for the PID calculations
- * @param setpoint
+ * @param target
  */
-void MiniPID::setSetpoint(double setpoint){
-	this->setpoint=setpoint;
+void MiniPID::setSetpoint(double target){
+	this->target=target;
 } 
 
-/** Calculate the PID value needed to hit the target setpoint. 
+/** Calculate the PID value needed to hit the target target. 
 * Automatically re-calculates the output at each call. 
 * @param actual The monitored value
 * @param target The target value
 * @return calculated output value for driving the actual to the target 
 */
-double MiniPID::getOutput(double actual, double setpoint){
+double MiniPID::getOutput(double actual, double target){
 	double output;
 	double Poutput;
 	double Ioutput;
 	double Doutput;
 	double Foutput;
 
-	this->setpoint=setpoint;
+	this->target=target;
 
-	//Ramp the setpoint used for calculations if user has opted to do so
+	//Ramp the target used for calculations if user has opted to do so
 	if(setpointRange!=0){
-		setpoint=clamp(setpoint,actual-setpointRange,actual+setpointRange);
+		target=clamp(target,actual-setpointRange,actual+setpointRange);
 	}
 
 	//Do the simple parts of the calculations
-	double error=setpoint-actual;
+	double error=target-actual;
 
-	//Calculate F output. Notice, this->depends only on the setpoint, and not the error. 
-	Foutput=F*setpoint;
+	//Calculate F output. Notice, this->depends only on the target, and not the error. 
+	Foutput=F*target;
 
 	//Calculate P term
 	Poutput=P*error;	 
@@ -271,11 +271,11 @@ double MiniPID::getOutput(double actual, double setpoint){
 }
 
 /**
- * Calculates the PID value using the last provided setpoint and actual valuess
+ * Calculates the PID value using the last provided target and actual valuess
  * @return calculated output value for driving the actual to the target 
  */
 double MiniPID::getOutput(){
-	return getOutput(lastActual,setpoint);
+	return getOutput(lastActual,target);
 }
 
 /**
@@ -284,7 +284,7 @@ double MiniPID::getOutput(){
  * @return calculated output value for driving the actual to the target 
  */
 double MiniPID::getOutput(double actual){
-	return getOutput(actual,setpoint);
+	return getOutput(actual,target);
 }
 	
 /**
@@ -302,10 +302,10 @@ void MiniPID::setOutputRampRate(double rate){
 	outputRampRate=rate;
 }
 
-/** Set a limit on how far the setpoint can be from the current position
+/** Set a limit on how far the target can be from the current position
  * <br>Can simplify tuning by helping tuning over a small range applies to a much larger range. 
  * <br>this->limits the reactivity of P term, and restricts impact of large D term
- * during large setpoint adjustments. Increases lag and I term if range is too small.
+ * during large target adjustments. Increases lag and I term if range is too small.
  * @param range
  */
 void MiniPID::setSetpointRange(double range){
