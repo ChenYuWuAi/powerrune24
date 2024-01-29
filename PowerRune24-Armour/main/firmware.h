@@ -69,6 +69,9 @@ struct PowerRune_Motor_config_info_t
     uint8_t auto_lock;
 };
 
+// Config class variable
+extern Config *config = NULL;
+
 class Config
 {
 protected:
@@ -139,7 +142,7 @@ public:
         return &config_common_info;
     }
 
-    esp_err_t read()
+    static esp_err_t read()
     {
         // Read config_info from NVS
         nvs_handle_t my_handle;
@@ -163,7 +166,7 @@ public:
         return ESP_OK;
     }
 
-    esp_err_t save()
+    static esp_err_t save()
     {
         // Write config_info to NVS
         nvs_handle_t my_handle;
@@ -189,7 +192,7 @@ public:
         return ESP_OK;
     }
 
-    esp_err_t reset()
+    static esp_err_t reset()
     {
 #if CONFIG_POWER_RUNE_TYPE == 0 // ARMOUR
         config_info = {
@@ -224,7 +227,7 @@ public:
             .SSID_pwd = CONFIG_DEFAULT_UPDATE_PWD,
             .auto_update = 1,
         };
-        this->save();
+        Config::save();
         return ESP_OK;
     }
     // 事件处理器
@@ -237,7 +240,9 @@ public:
         PowerRune_Armour_config_info_t *info = (PowerRune_Armour_config_info_t *)event_data;
 #endif
         memcpy(&config_common_info, event_data, sizeof(PowerRune_Common_config_info_t));
-
+        memcpy(&config_info, event_data, sizeof(PowerRune_Armour_config_info_t));
+        // Write config_info to NVS
+        Config::save();
         return ESP_OK;
     }
 };
@@ -256,54 +261,107 @@ const char *Config::PowerRune_description = "Motor";
 class Firmware
 {
 private:
+    esp_app_desc_t app_desc;
+    uint8_t sha_256[32] = {0};
+    // OTA Task handler
+    TaskHandle_t *ota_task_handle;
+
 public:
     Firmware()
     {
+        if (config == NULL)
+            config = new Config();
+        const esp_partition_t *running = esp_ota_get_running_partition();
         // get version from esp-idf esp_description
-        esp_app_desc_t app_desc;
-        esp_err_t err = esp_ota_get_partition_description(esp_ota_get_running_partition(), &app_desc);
+        esp_err_t err = esp_ota_get_partition_description(running, &app_desc);
+        // get sha256 digest for running partition
+        esp_partition_get_sha256(running, sha_256);
+
         if (err != ESP_OK)
         {
             ESP_LOGE(TAG_FIRMWARE, "esp_ota_get_partition_description failed (%s)", esp_err_to_name(err));
         }
         else
         {
-            ESP_LOGI(TAG_FIRMWARE, "PowerRune %s version: %s", Config::PowerRune_description, app_desc.version);
+            // print sha256
+            char hash_print[65];
+            hash_print[64] = 0;
+            for (int i = 0; i < 32; ++i)
+            {
+                sprintf(&hash_print[64], "%02x", sha_256[i]);
+            }
+            ESP_LOGI(TAG_FIRMWARE, "PowerRune %s version: %s, Hash: %s", Config::PowerRune_description, app_desc.version, hash_print);
         }
-        // 第一次更新重启，Verify更新分区
-        if (app_desc.magic_word != ESP_APP_DESC_MAGIC_WORD)
+        // 完成OTA初始化
+        // 启动Wifi
+        ESP_ERROR_CHECK(esp_netif_init());
+        ESP_ERROR_CHECK(esp_event_loop_create_default());
+        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+        esp_netif_inherent_config_t esp_netif_config = ESP_NETIF_INHERENT_DEFAULT_WIFI_STA();
+        // Warning: the interface desc is used in tests to capture actual connection details (IP, gw, mask)
+        esp_netif_config.if_desc = "STA";
+        esp_netif_config.route_prio = 128;
+        esp_netif_t *netif = esp_netif_create_wifi(WIFI_IF_STA, &esp_netif_config);
+
+        esp_wifi_set_default_wifi_sta_handlers();
+
+        ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+        ESP_ERROR_CHECK(esp_wifi_start());
+        esp_wifi_set_ps(WIFI_PS_NONE);
+        if (config->get_config_common_info_pt()->auto_update)
         {
-            ESP_LOGW(TAG_FIRMWARE, "First Boot, Verify OTA Partition");
-            err = esp_ota_mark_app_valid_cancel_rollback();
-            if (err != ESP_OK)
-            {
-                ESP_LOGE(TAG_FIRMWARE, "esp_ota_mark_app_valid_cancel_rollback failed (%s)", esp_err_to_name(err));
-            }
-            else
-            {
-                ESP_LOGI(TAG_FIRMWARE, "OTA Partition Verified");
-            }
+            // Start OTA
+            xTaskCreate((TaskFunction_t)Firmware::task_OTA, "OTA", 4096, NULL, 5, ota_task_handle);
         }
     }
 
-    static esp_err_t
-    global_task_OTA(void *args)
+    static esp_err_t task_OTA(void *args)
     {
-        return firmware->task_OTA();
+        esp_err_t err = ESP_OK;
+
+        // Get Config
+        const PowerRune_Common_config_info_t *config_common_info = Config::get_config_common_info_pt();
+        // Connect Wifi
+        wifi_config_t wifi_config = {
+            .sta = {
+                .ssid = config->get_config_common_info_pt()->SSID,
+                .password = config->get_config_common_info_pt()->SSID_pwd,
+                .scan_method = WIFI_FAST_SCAN,
+                .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
+                .threshold = {
+                    .rssi = -127,
+                    .authmode = strlen(config->get_config_common_info_pt()->SSID_pwd) == 0 ? WIFI_AUTH_OPEN : WIFI_AUTH_WPA2_PSK,
+                },
+            },
+        };
+        // 注册连接事件监听
+        esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, (esp_event_handler_t)Firmware::global_system_event_handler, args);
+        esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, (esp_event_handler_t)Firmware::global_system_event_handler, args);
+        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+        ESP_ERROR_CHECK(esp_wifi_connect());
+        // Wait for connection
+        ESP_LOGI(TAG_FIRMWARE, "OTA task complete");
+        return ESP_OK;
+    err_out:
+        ESP_LOGE(TAG_FIRMWARE, "OTA task failed (%s)", esp_err_to_name(err));
+        // OTA_COMPLETE_EVENT with err
+        esp_event_post_to(pr_events_loop_handle, OTA_EVENTS, OTA_COMPLETE_EVENT, &err, sizeof(esp_err_t), portMAX_DELAY);
+        return err;
     }
 
-    esp_err_t event_handler()
+    static esp_err_t global_system_event_handler(void *handler_arg, esp_event_base_t base, int32_t id, void *event_data)
     {
-
+        switch (base)
+        {
+        }
         return ESP_OK;
     }
 
-    static err_t global_evenet_handler(void *args)
-    {
-        Firmware<PowerRune_config_info_t> *firmware = (Firmware<PowerRune_config_info_t> *)args;
-        return firmware->event_handler();
-    }
-    ~Firmware()
+    // 处理系统事件，例如等待Wifi连接，获取IP地址等
+    static static err_t global_event_ ~Firmware()
     {
         // Implement the function here
     }

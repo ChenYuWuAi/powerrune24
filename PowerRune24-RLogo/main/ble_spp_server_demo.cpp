@@ -156,7 +156,7 @@ static spp_receive_data_buff_t SppRecvDataBuff = {
 extern "C" void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 
 /* One gatt-based profile one app_id and one gatts_if, this array will store the gatts_if returned by ESP_GATTS_REG_EVT */
-// 服务端APP注册结构表
+// 服务端APP注册结构表static
 static struct gatts_profile_inst spp_profile_tab[SPP_PROFILE_NUM] = {
     [SPP_PROFILE_APP_IDX] = {
         .gatts_cb = gatts_profile_event_handler, // 回调函数
@@ -224,122 +224,126 @@ static const uint16_t armor_id_uuid = UUID_ARMOR_ID;
 static const u_int8_t armor_id_val[1] = {0};
 static const uint8_t armor_id_ccc[2] = {0};
 
-// 系统参数设置服务的属性表
-static const esp_gatts_attr_db_t spp_gatt_db[SPP_IDX_NB] = {
-    // SPP -  Service Declaration
-    [SPP_IDX_SVC] = {{ESP_GATT_AUTO_RSP},
-                     {ESP_UUID_LEN_16, (uint8_t *)&primary_service_uuid, ESP_GATT_PERM_READ, sizeof(spp_service_uuid), sizeof(spp_service_uuid), (uint8_t *)&spp_service_uuid}},
+extern "C"
+{
 
-    // url
-    [URL_CHAR] = {{ESP_GATT_AUTO_RSP},
-                  {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+    // 系统参数设置服务的属性表
+    static const esp_gatts_attr_db_t spp_gatt_db[SPP_IDX_NB] = {
+        // SPP -  Service Declaration
+        [SPP_IDX_SVC] = {{ESP_GATT_AUTO_RSP},
+                         {ESP_UUID_LEN_16, (uint8_t *)&primary_service_uuid, ESP_GATT_PERM_READ, sizeof(spp_service_uuid), sizeof(spp_service_uuid), (uint8_t *)&spp_service_uuid}},
 
-    [URL_VAL] = {{ESP_GATT_AUTO_RSP},
-                 {ESP_UUID_LEN_16, (uint8_t *)&url_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(url_val), sizeof(url_val), (uint8_t *)url_val}},
+        // url
+        [URL_CHAR] = {{ESP_GATT_AUTO_RSP},
+                      {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
-    [URL_CFG] = {{ESP_GATT_AUTO_RSP},
-                 {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(url_ccc), (uint8_t *)url_ccc}},
+        [URL_VAL] = {{ESP_GATT_AUTO_RSP},
+                     {ESP_UUID_LEN_16, (uint8_t *)&url_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(url_val), sizeof(url_val), (uint8_t *)url_val}},
 
-    // mac
-    [MAC_CHAR] = {{ESP_GATT_AUTO_RSP},
-                  {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+        [URL_CFG] = {{ESP_GATT_AUTO_RSP},
+                     {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(url_ccc), (uint8_t *)url_ccc}},
 
-    [MAC_VAL] = {{ESP_GATT_AUTO_RSP},
-                 {ESP_UUID_LEN_16, (uint8_t *)&mac_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(mac_val), sizeof(mac_val), (uint8_t *)mac_val}},
+        // mac
+        [MAC_CHAR] = {{ESP_GATT_AUTO_RSP},
+                      {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
-    [MAC_CFG] = {{ESP_GATT_AUTO_RSP},
-                 {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(mac_ccc), (uint8_t *)mac_ccc}},
+        [MAC_VAL] = {{ESP_GATT_AUTO_RSP},
+                     {ESP_UUID_LEN_16, (uint8_t *)&mac_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(mac_val), sizeof(mac_val), (uint8_t *)mac_val}},
 
-    // ssid
-    [SSID_CHAR] = {{ESP_GATT_AUTO_RSP},
-                   {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+        [MAC_CFG] = {{ESP_GATT_AUTO_RSP},
+                     {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(mac_ccc), (uint8_t *)mac_ccc}},
 
-    [SSID_VAL] = {{ESP_GATT_AUTO_RSP},
-                  {ESP_UUID_LEN_16, (uint8_t *)&ssid_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(ssid_val), sizeof(ssid_val), (uint8_t *)ssid_val}},
-
-    [SSID_CFG] = {{ESP_GATT_AUTO_RSP},
-                  {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(ssid_ccc), (uint8_t *)ssid_ccc}},
-
-    // wifi
-    [Wifi_CHAR] = {{ESP_GATT_AUTO_RSP},
-                   {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
-
-    [Wifi_VAL] = {{ESP_GATT_AUTO_RSP},
-                  {ESP_UUID_LEN_16, (uint8_t *)&wifi_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(wifi_val), sizeof(wifi_val), (uint8_t *)wifi_val}},
-
-    [Wifi_CFG] = {{ESP_GATT_AUTO_RSP},
-                  {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(wifi_ccc), (uint8_t *)wifi_ccc}},
-
-    // aota
-    [AOTA_CHAR] = {{ESP_GATT_AUTO_RSP},
-                   {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
-
-    [AOTA_VAL] = {{ESP_GATT_AUTO_RSP},
-                  {ESP_UUID_LEN_16, (uint8_t *)&aota_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(aota_val), sizeof(aota_val), (uint8_t *)aota_val}},
-
-    [AOTA_CFG] = {{ESP_GATT_AUTO_RSP},
-                  {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(aota_ccc), (uint8_t *)aota_ccc}},
-
-    // lit
-    [LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
-                  {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
-
-    [LIT_VAL] = {{ESP_GATT_AUTO_RSP},
-                 {ESP_UUID_LEN_16, (uint8_t *)&lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(lit_val), sizeof(lit_val), (uint8_t *)lit_val}},
-
-    [LIT_CFG] = {{ESP_GATT_AUTO_RSP},
-                 {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(lit_ccc), (uint8_t *)lit_ccc}},
-
-    // strip_lit
-    [STRIP_LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
-                        {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
-
-    [STRIP_LIT_VAL] = {{ESP_GATT_AUTO_RSP},
-                       {ESP_UUID_LEN_16, (uint8_t *)&strip_lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(strip_lit_val), sizeof(strip_lit_val), (uint8_t *)strip_lit_val}},
-
-    [STRIP_LIT_CFG] = {{ESP_GATT_AUTO_RSP},
-                       {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(strip_lit_ccc), (uint8_t *)strip_lit_ccc}},
-
-    // r_lit
-    [R_LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
-                    {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
-
-    [R_LIT_VAL] = {{ESP_GATT_AUTO_RSP},
-                   {ESP_UUID_LEN_16, (uint8_t *)&r_lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(r_lit_val), sizeof(r_lit_val), (uint8_t *)r_lit_val}},
-
-    [R_LIT_CFG] = {{ESP_GATT_AUTO_RSP},
-                   {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(r_lit_ccc), (uint8_t *)r_lit_ccc}},
-
-    // matrix_lit
-    [MATRIX_LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
-                         {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
-
-    [MATRIX_LIT_VAL] = {{ESP_GATT_AUTO_RSP},
-                        {ESP_UUID_LEN_16, (uint8_t *)&matrix_lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(matrix_lit_val), sizeof(matrix_lit_val), (uint8_t *)matrix_lit_val}},
-
-    [MATRIX_LIT_CFG] = {{ESP_GATT_AUTO_RSP},
-                        {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(matrix_lit_ccc), (uint8_t *)matrix_lit_ccc}},
-
-    // pid
-    [PID_CHAR] = {{ESP_GATT_AUTO_RSP},
-                  {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
-
-    [PID_VAL] = {{ESP_GATT_AUTO_RSP},
-                 {ESP_UUID_LEN_16, (uint8_t *)&pid_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(pid_val), sizeof(pid_val), (uint8_t *)pid_val}},
-
-    [PID_CFG] = {{ESP_GATT_AUTO_RSP},
-                 {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(pid_ccc), (uint8_t *)pid_ccc}},
-
-    // armor_id
-    [ARMOR_ID_CHAR] = {{ESP_GATT_AUTO_RSP},
+        // ssid
+        [SSID_CHAR] = {{ESP_GATT_AUTO_RSP},
                        {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
-    [ARMOR_ID_VAL] = {{ESP_GATT_AUTO_RSP},
-                      {ESP_UUID_LEN_16, (uint8_t *)&armor_id_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(armor_id_val), sizeof(armor_id_val), (uint8_t *)armor_id_val}},
+        [SSID_VAL] = {{ESP_GATT_AUTO_RSP},
+                      {ESP_UUID_LEN_16, (uint8_t *)&ssid_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(ssid_val), sizeof(ssid_val), (uint8_t *)ssid_val}},
 
-    [ARMOR_ID_CFG] = {{ESP_GATT_AUTO_RSP},
-                      {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(armor_id_ccc), (uint8_t *)armor_id_ccc}},
-};
+        [SSID_CFG] = {{ESP_GATT_AUTO_RSP},
+                      {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(ssid_ccc), (uint8_t *)ssid_ccc}},
+
+        // wifi
+        [Wifi_CHAR] = {{ESP_GATT_AUTO_RSP},
+                       {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+
+        [Wifi_VAL] = {{ESP_GATT_AUTO_RSP},
+                      {ESP_UUID_LEN_16, (uint8_t *)&wifi_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(wifi_val), sizeof(wifi_val), (uint8_t *)wifi_val}},
+
+        [Wifi_CFG] = {{ESP_GATT_AUTO_RSP},
+                      {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(wifi_ccc), (uint8_t *)wifi_ccc}},
+
+        // aota
+        [AOTA_CHAR] = {{ESP_GATT_AUTO_RSP},
+                       {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+
+        [AOTA_VAL] = {{ESP_GATT_AUTO_RSP},
+                      {ESP_UUID_LEN_16, (uint8_t *)&aota_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(aota_val), sizeof(aota_val), (uint8_t *)aota_val}},
+
+        [AOTA_CFG] = {{ESP_GATT_AUTO_RSP},
+                      {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(aota_ccc), (uint8_t *)aota_ccc}},
+
+        // lit
+        [LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
+                      {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+
+        [LIT_VAL] = {{ESP_GATT_AUTO_RSP},
+                     {ESP_UUID_LEN_16, (uint8_t *)&lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(lit_val), sizeof(lit_val), (uint8_t *)lit_val}},
+
+        [LIT_CFG] = {{ESP_GATT_AUTO_RSP},
+                     {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(lit_ccc), (uint8_t *)lit_ccc}},
+
+        // strip_lit
+        [STRIP_LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
+                            {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+
+        [STRIP_LIT_VAL] = {{ESP_GATT_AUTO_RSP},
+                           {ESP_UUID_LEN_16, (uint8_t *)&strip_lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(strip_lit_val), sizeof(strip_lit_val), (uint8_t *)strip_lit_val}},
+
+        [STRIP_LIT_CFG] = {{ESP_GATT_AUTO_RSP},
+                           {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(strip_lit_ccc), (uint8_t *)strip_lit_ccc}},
+
+        // r_lit
+        [R_LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
+                        {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+
+        [R_LIT_VAL] = {{ESP_GATT_AUTO_RSP},
+                       {ESP_UUID_LEN_16, (uint8_t *)&r_lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(r_lit_val), sizeof(r_lit_val), (uint8_t *)r_lit_val}},
+
+        [R_LIT_CFG] = {{ESP_GATT_AUTO_RSP},
+                       {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(r_lit_ccc), (uint8_t *)r_lit_ccc}},
+
+        // matrix_lit
+        [MATRIX_LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
+                             {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+
+        [MATRIX_LIT_VAL] = {{ESP_GATT_AUTO_RSP},
+                            {ESP_UUID_LEN_16, (uint8_t *)&matrix_lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(matrix_lit_val), sizeof(matrix_lit_val), (uint8_t *)matrix_lit_val}},
+
+        [MATRIX_LIT_CFG] = {{ESP_GATT_AUTO_RSP},
+                            {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(matrix_lit_ccc), (uint8_t *)matrix_lit_ccc}},
+
+        // pid
+        [PID_CHAR] = {{ESP_GATT_AUTO_RSP},
+                      {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+
+        [PID_VAL] = {{ESP_GATT_AUTO_RSP},
+                     {ESP_UUID_LEN_16, (uint8_t *)&pid_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(pid_val), sizeof(pid_val), (uint8_t *)pid_val}},
+
+        [PID_CFG] = {{ESP_GATT_AUTO_RSP},
+                     {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(pid_ccc), (uint8_t *)pid_ccc}},
+
+        // armor_id
+        [ARMOR_ID_CHAR] = {{ESP_GATT_AUTO_RSP},
+                           {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+
+        [ARMOR_ID_VAL] = {{ESP_GATT_AUTO_RSP},
+                          {ESP_UUID_LEN_16, (uint8_t *)&armor_id_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(armor_id_val), sizeof(armor_id_val), (uint8_t *)armor_id_val}},
+
+        [ARMOR_ID_CFG] = {{ESP_GATT_AUTO_RSP},
+                          {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(armor_id_ccc), (uint8_t *)armor_id_ccc}},
+    };
+}
 
 // 大符操作服务的属性表的相关全局变量
 // run
@@ -422,7 +426,6 @@ static const esp_gatts_attr_db_t ops_gatt_db[OPS_IDX_NB] = {
 // event loop中的handle
 // Handler which executes when the ble started event gets executed by the loop.
 // spp服务
-
 
 static void url_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
