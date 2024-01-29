@@ -74,6 +74,7 @@ class Config
 protected:
 #if CONFIG_POWER_RUNE_TYPE == 0 // ARMOUR
     static PowerRune_Armour_config_info_t config_info;
+
 #endif
 #if CONFIG_POWER_RUNE_TYPE == 1
     static PowerRune_Rlogo_config_info_t config_info;
@@ -84,6 +85,7 @@ protected:
     static PowerRune_Common_config_info_t config_common_info;
 
 public:
+    static const char *PowerRune_description;
     Config()
     {
         // NVS Flash Init
@@ -107,7 +109,7 @@ public:
             reset();
         }
         // 注册PRC事件处理器
-        esp_event_handler_register_with(pr_events_loop_handle, PRC, CONFIG_EVENT, Config::global_evenet_handler, this);
+        esp_event_handler_register_with(pr_events_loop_handle, PRC, CONFIG_EVENT, (esp_event_handler_t)Config::global_event_handler, this);
     }
 
 // 获取数据指针
@@ -240,28 +242,23 @@ public:
     }
 };
 
+#if CONFIG_POWER_RUNE_TYPE == 0 // ARMOUR
+const char *Config::PowerRune_description = "Armour";
+#endif
+#if CONFIG_POWER_RUNE_TYPE == 1
+const char *Config::PowerRune_description = "RLogo";
+#endif
+#if CONFIG_POWER_RUNE_TYPE == 2 // MOTORCTL
+const char *Config::PowerRune_description = "Motor";
+#endif
+
+// 负责维护硬件启动后的更新，标记更新分区，重启等操作
 class Firmware
 {
 private:
-    enum PR_type // PowerRune Type
-    {
-        ARMOUR,
-        RLOGO,
-        MOTORCTL,
-    };
-
-    struct board_info_t
-    {
-        PR_type board_type;
-        char version[32];
-    };
-
 public:
-    board_info_t board_info;
     Firmware()
     {
-        // get board info
-        board_info.board_type = (PR_type)CONFIG_POWERRUNE_TYPE;
         // get version from esp-idf esp_description
         esp_app_desc_t app_desc;
         esp_err_t err = esp_ota_get_partition_description(esp_ota_get_running_partition(), &app_desc);
@@ -271,14 +268,27 @@ public:
         }
         else
         {
-            strcpy(board_info.version, app_desc.version);
+            ESP_LOGI(TAG_FIRMWARE, "PowerRune %s version: %s", Config::PowerRune_description, app_desc.version);
+        }
+        // 第一次更新重启，Verify更新分区
+        if (app_desc.magic_word != ESP_APP_DESC_MAGIC_WORD)
+        {
+            ESP_LOGW(TAG_FIRMWARE, "First Boot, Verify OTA Partition");
+            err = esp_ota_mark_app_valid_cancel_rollback();
+            if (err != ESP_OK)
+            {
+                ESP_LOGE(TAG_FIRMWARE, "esp_ota_mark_app_valid_cancel_rollback failed (%s)", esp_err_to_name(err));
+            }
+            else
+            {
+                ESP_LOGI(TAG_FIRMWARE, "OTA Partition Verified");
+            }
         }
     }
 
     static esp_err_t
     global_task_OTA(void *args)
     {
-        Firmware<PowerRune_config_info_t> *firmware = (Firmware<PowerRune_config_info_t> *)args;
         return firmware->task_OTA();
     }
 
