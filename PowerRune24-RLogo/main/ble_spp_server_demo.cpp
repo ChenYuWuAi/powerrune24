@@ -29,7 +29,7 @@
 #define SPP_PROFILE_NUM 1
 #define SPP_PROFILE_APP_IDX 0
 #define ESP_SPP_APP_ID 0x56
-#define SAMPLE_DEVICE_NAME "ESP_SPP_SERVER" // The Device Name Characteristics in GAP
+#define SAMPLE_DEVICE_NAME "PowerRune24" // The Device Name Characteristics in GAP
 
 // 服务注册ID
 #define SPP_SVC_INST_ID 0
@@ -38,7 +38,6 @@
 // SPP Service(系统参数设置服务)的UUID
 static const uint16_t spp_service_uuid = 0x1827; // Mesh Proxy Service
 // 特征值的UUID
-#define UUID_LED 0xABF0        // supportled
 #define UUID_URL 0x2AA6        // Central Address Resoluton
 #define UUID_MAC 0x2AC9        // Resolvable Private Address Only
 #define UUID_SSID 0x2AC3       // Object ID
@@ -63,7 +62,15 @@ static const uint16_t ops_service_uuid = 0x1828;
 // LED_Strip
 LED_Strip LED_Strip_0(GPIO_NUM_10, 49);
 
-static const uint8_t spp_adv_data[20] = {
+/**
+ * @brief Static array containing the advertising data for the BLE SPP server.
+ *
+ * The advertising data includes the following:
+ * - Flags: 0x02, 0x01, 0x06
+ * - Complete List of 16-bit Service Class UUIDs: 0x03, 0x03, 0xF0, 0xAB
+ * - Complete Local Name in advertising: "PowerRune24"
+ */
+static const uint8_t spp_adv_data[] = {
     /* Flags */
     0x02,
     0x01,
@@ -74,8 +81,7 @@ static const uint8_t spp_adv_data[20] = {
     0xF0,
     0xAB,
     /* Complete Local Name in advertising */
-    // PowerRune24
-    0x0B,
+    0x0C,
     0x09,
     'P',
     'o',
@@ -163,7 +169,6 @@ static struct gatts_profile_inst spp_profile_tab[SPP_PROFILE_NUM] = {
         .gatts_if = ESP_GATT_IF_NONE,            /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
     },
 };
-
 /*
  *  SPP PROFILE ATTRIBUTES
  ****************************************************************************************
@@ -182,50 +187,47 @@ static const uint8_t char_prop_read_write_notify = ESP_GATT_CHAR_PROP_BIT_READ |
 // url
 static const uint16_t url_uuid = UUID_URL;
 static const u_int8_t url_val[1] = {0};
-static const uint8_t url_ccc[2] = {0};
+static const uint8_t url_ccc[1] = {0};
 // mac
 static const uint16_t mac_uuid = UUID_MAC;
 static const u_int8_t mac_val[1] = {0};
-static const uint8_t mac_ccc[2] = {0};
+static const uint8_t mac_ccc[1] = {0};
 // ssid
 static const uint16_t ssid_uuid = UUID_SSID;
 static const u_int8_t ssid_val[1] = {0};
-static const uint8_t ssid_ccc[2] = {0};
+static const uint8_t ssid_ccc[1] = {0};
 // wifi
 static const uint16_t wifi_uuid = UUID_Wifi;
 static const u_int8_t wifi_val[1] = {0};
-static const uint8_t wifi_ccc[2] = {0};
+static const uint8_t wifi_ccc[1] = {0};
 // aota
 static const uint16_t aota_uuid = UUID_AOTA;
 static const u_int8_t aota_val[1] = {0};
-static const uint8_t aota_ccc[2] = {0};
+static const uint8_t aota_ccc[1] = {0};
 // lit
 static const uint16_t lit_uuid = UUID_LIT;
 static const u_int8_t lit_val[1] = {0};
-static const uint8_t lit_ccc[2] = {0};
+static const uint8_t lit_ccc[1] = {0};
 // strip_lit
 static const uint16_t strip_lit_uuid = UUID_STRIP_LIT;
 static const u_int8_t strip_lit_val[1] = {0};
-static const uint8_t strip_lit_ccc[2] = {0};
+static const uint8_t strip_lit_ccc[1] = {0};
 // r_lit
 static const uint16_t r_lit_uuid = UUID_R_LIT;
 static const u_int8_t r_lit_val[1] = {0};
-static const uint8_t r_lit_ccc[2] = {0};
+static const uint8_t r_lit_ccc[1] = {0};
 // matrix_lit
 static const uint16_t matrix_lit_uuid = UUID_MATRIX_LIT;
 static const u_int8_t matrix_lit_val[1] = {0};
-static const uint8_t matrix_lit_ccc[2] = {0};
+static const uint8_t matrix_lit_ccc[1] = {0};
 // pid
 static const uint16_t pid_uuid = UUID_PID;
 static const u_int8_t pid_val[1] = {0};
-static const uint8_t pid_ccc[2] = {0};
+static const uint8_t pid_ccc[1] = {0};
 // armor_id
 static const uint16_t armor_id_uuid = UUID_ARMOR_ID;
 static const u_int8_t armor_id_val[1] = {0};
-static const uint8_t armor_id_ccc[2] = {0};
-
-extern "C"
-{
+static const uint8_t armor_id_ccc[1] = {0};
 
     // 系统参数设置服务的属性表
     static const esp_gatts_attr_db_t spp_gatt_db[SPP_IDX_NB] = {
@@ -349,7 +351,7 @@ extern "C"
 // run
 static const uint16_t ops_run_uuid = UUID_RUN;
 static const u_int8_t ops_run_val[3] = {0};
-static const uint8_t ops_run_ccc[2] = {0};
+static const uint8_t ops_run_ccc[1] = {0};
 // gpa
 static const uint16_t ops_gpa_uuid = UUID_GPA;
 static const u_int8_t ops_gpa_val[1] = {0};
@@ -357,17 +359,17 @@ static const u_int8_t ops_gpa_val[1] = {0};
 // unlk
 static const uint16_t ops_unlk_uuid = UUID_UNLK;
 static const u_int8_t ops_unlk_val[1] = {0};
-static const uint8_t ops_unlk_ccc[2] = {0};
+static const uint8_t ops_unlk_ccc[1] = {0};
 
 // stop
 static const uint16_t ops_stop_uuid = UUID_STOP;
 static const u_int8_t ops_stop_val[1] = {0};
-static const uint8_t ops_stop_ccc[2] = {0};
+static const uint8_t ops_stop_ccc[1] = {0};
 
 // ota
 static const uint16_t ops_ota_uuid = UUID_OTA;
 static const u_int8_t ops_ota_val[1] = {0};
-static const uint8_t ops_ota_ccc[2] = {0};
+static const uint8_t ops_ota_ccc[1] = {0};
 
 // 大符操作服务的属性表                       添加属性表下标
 static const esp_gatts_attr_db_t ops_gatt_db[OPS_IDX_NB] = {
@@ -426,7 +428,6 @@ static const esp_gatts_attr_db_t ops_gatt_db[OPS_IDX_NB] = {
 // event loop中的handle
 // Handler which executes when the ble started event gets executed by the loop.
 // spp服务
-
 static void url_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
 }
@@ -515,43 +516,258 @@ static void armor_id_write_handler(void *handler_args, esp_event_base_t base, in
 {
 }
 // ops服务
-static void run_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
+
+class RUNE
+{
+private:
+public:
+    int ID;
+    int rand_num;
+    RUNE()
+    {
+    }
+    RUNE(int id)
+        : ID(id)
+    {
+        rand_num = rand() % 5 + 1;
+    }
+    void randagain()
+    {
+        rand_num = rand() % 5 + 1;
+    }
+};
+RUNE rune1(1);
+RUNE rune2(2);
+RUNE rune3(3);
+RUNE rune4(4);
+RUNE rune5(5);
+void rune_rand()
+{
+    srand(xTaskGetTickCount());
+    rune1.randagain();
+    while (rune1.rand_num == rune2.rand_num)
+    {
+        rune2.randagain();
+    }
+    while (rune1.rand_num == rune3.rand_num || rune2.rand_num == rune3.rand_num)
+    {
+        rune3.randagain();
+    }
+    while (rune1.rand_num == rune4.rand_num || rune2.rand_num == rune4.rand_num || rune3.rand_num == rune4.rand_num)
+    {
+        rune4.randagain();
+    }
+    while (rune1.rand_num == rune5.rand_num || rune2.rand_num == rune5.rand_num || rune3.rand_num == rune5.rand_num || rune4.rand_num == rune5.rand_num)
+    {
+        rune5.randagain();
+    }
+}
+
+int IS_PRM_SPEED_STABLE = 0;
+int IS_HIT = 0;
+
+int hitted_ID = 10;
+int start_pra_and_wait_hit(int expected_ID)
+{
+    esp_event_post(PRA, PRA_START_EVENT, NULL, 0, portMAX_DELAY);
+
+    int old_time = xTaskGetTickCount();
+    while (IS_HIT == 0)
+    {
+        if (xTaskGetTickCount() - old_time >= 2500)
+        {
+            esp_event_post(PRA, PRA_STOP_EVENT, NULL, 0, portMAX_DELAY);
+            return -1;
+        }
+    }
+    IS_HIT = 0;
+    if (expected_ID == hitted_ID)
+    {
+        esp_event_post(PRA, PRA_HIT_EVENT, NULL, 0, portMAX_DELAY);
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+void run_task()
 {
     const u_int8_t *value;
     u_int16_t len;
 
-    esp_ble_gatts_get_attr_value(/*是ops*/ ops_handle_table[RUN_VAL], &len, &value);
+    esp_ble_gatts_get_attr_value(ops_handle_table[RUN_VAL], &len, &value);
 
-    printf("获取run特征值    OK\n");
-    printf("length = %d\r\n", len);
+    printf("run特征值:\n");
     printf("value0(颜色) = %d\r\n", value[0]);
-    printf("value1(亮度) = %d\r\n", value[1]);
-    printf("value2 = %d\r\n", value[2]);
+    printf("value1(大小) = %d\r\n", value[1]);
+    printf("value2(自动)0/1 = %d\r\n\n", value[2]);
 
-    char a[5];
+    rune_rand();
 
-    if (value[0] == 0)
-    {
-        LED_Strip_0.set_color((uint8_t)0, 0, 255, value[1]);
-        LED_Strip_0.refresh();
-        a[0] = 'b';
-        a[1] = 'l';
-        a[2] = 'u';
-        a[3] = 'e';
-        a[4] = '\0';
-    }
-    else if (value[0] == 1)
-    {
-        LED_Strip_0.set_color((uint8_t)255, 0, 0, value[1]);
-        LED_Strip_0.refresh();
-        a[0] = 'r';
-        a[1] = 'e';
-        a[2] = 'd';
-        a[3] = '\0';
-        a[4] = '\0';
-    }
+    printf("rune1 = %d\r\n", rune1.rand_num);
+    printf("rune2 = %d\r\n", rune2.rand_num);
+    printf("rune3 = %d\r\n", rune3.rand_num);
+    printf("rune4 = %d\r\n", rune4.rand_num);
+    printf("rune5 = %d\r\n", rune5.rand_num);
 
+    int a[5];
+    a[0] = rune1.rand_num;
+    a[1] = rune2.rand_num;
+    a[2] = rune3.rand_num;
+    a[3] = rune4.rand_num;
+    a[4] = rune5.rand_num;
     esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[RUN_VAL], sizeof(a), (uint8_t *)a, false);
+
+    static int only_once = 0;
+    if(only_once == 0)
+    {
+        esp_event_post(PRM, PRM_START_EVENT, NULL, 0, portMAX_DELAY);
+        while (IS_PRM_SPEED_STABLE == 0){}
+    }
+
+    RUNE rune_start_sequence[5];
+    if (rune1.rand_num == 1)
+    {
+        rune_start_sequence[0] = rune1;
+    }
+    else if (rune2.rand_num == 1)
+    {
+        rune_start_sequence[0] = rune2;
+    }
+    else if (rune3.rand_num == 1)
+    {
+        rune_start_sequence[0] = rune3;
+    }
+    else if (rune4.rand_num == 1)
+    {
+        rune_start_sequence[0] = rune4;
+    }
+    else if (rune5.rand_num == 1)
+    {
+        rune_start_sequence[0] = rune5;
+    }
+    if (rune1.rand_num == 2)
+    {
+        rune_start_sequence[1] = rune1;
+    }
+    else if (rune2.rand_num == 2)
+    {
+        rune_start_sequence[1] = rune2;
+    }
+    else if (rune3.rand_num == 2)
+    {
+        rune_start_sequence[1] = rune3;
+    }
+    else if (rune4.rand_num == 2)
+    {
+        rune_start_sequence[1] = rune4;
+    }
+    else if (rune5.rand_num == 2)
+    {
+        rune_start_sequence[1] = rune5;
+    }
+    if (rune1.rand_num == 3)
+    {
+        rune_start_sequence[2] = rune1;
+    }
+    else if (rune2.rand_num == 3)
+    {
+        rune_start_sequence[2] = rune2;
+    }
+    else if (rune3.rand_num == 3)
+    {
+        rune_start_sequence[2] = rune3;
+    }
+    else if (rune4.rand_num == 3)
+    {
+        rune_start_sequence[2] = rune4;
+    }
+    else if (rune5.rand_num == 3)
+    {
+        rune_start_sequence[2] = rune5;
+    }
+    if (rune1.rand_num == 4)
+    {
+        rune_start_sequence[3] = rune1;
+    }
+    else if (rune2.rand_num == 4)
+    {
+        rune_start_sequence[3] = rune2;
+    }
+    else if (rune3.rand_num == 4)
+    {
+        rune_start_sequence[3] = rune3;
+    }
+    else if (rune4.rand_num == 4)
+    {
+        rune_start_sequence[3] = rune4;
+    }
+    else if (rune5.rand_num == 4)
+    {
+        rune_start_sequence[3] = rune5;
+    }
+    if (rune1.rand_num == 5)
+    {
+        rune_start_sequence[4] = rune1;
+    }
+    else if (rune2.rand_num == 5)
+    {
+        rune_start_sequence[4] = rune2;
+    }
+    else if (rune3.rand_num == 5)
+    {
+        rune_start_sequence[4] = rune3;
+    }
+    else if (rune4.rand_num == 5)
+    {
+        rune_start_sequence[4] = rune4;
+    }
+    else if (rune5.rand_num == 5)
+    {
+        rune_start_sequence[4] = rune5;
+    }
+    int hit_count = 0;
+    for (; hit_count < 5; hit_count++)
+    {
+        int res;
+        int all_stop_arg = 0;
+        res = start_pra_and_wait_hit(rune_start_sequence[hit_count].ID);
+        if (res == 0)
+        {
+            printf("击错\n");
+            esp_event_post(PRM, PRA_STOP_EVENT, &all_stop_arg, sizeof(int), portMAX_DELAY);
+            char a[6] = "wrong";
+            esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[RUN_VAL], sizeof(a), (uint8_t *)a, false);
+            hit_count = 0;
+            break;
+        }
+        else if (res == -1)
+        {
+            printf("超时\n");
+            esp_event_post(PRM, PRA_STOP_EVENT, &all_stop_arg, sizeof(int), portMAX_DELAY);
+            char a[5] = "miss";
+            esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[RUN_VAL], sizeof(a), (uint8_t *)a, false);
+            hit_count = 0;
+            break;
+        }
+    }
+    if(hit_count == 4)
+    {
+        printf("完成\n");
+        esp_event_post(PRM, PRA_COMPLETE_EVENT, NULL, 0, portMAX_DELAY);
+    }
+    if (value[2] == 1)
+    {
+        printf("自动循环\n");
+        esp_event_post(RUN_EVENTS, RUN_EVENT_WRITE, NULL, 0, portMAX_DELAY);
+    }
+    only_once = 1;
+    vTaskDelete(NULL);
+}
+static void run_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
+{
+    xTaskCreate((TaskFunction_t)run_task, "run_task", 4096, NULL, 10, NULL);
 }
 
 static void gpa_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
@@ -565,9 +781,37 @@ static void unlk_write_handler(void *handler_args, esp_event_base_t base, int32_
 static void stop_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
 }
+void ota_task()
+{
+    esp_event_post(PRC, OTA_BEGIN_EVENT, NULL, 0, portMAX_DELAY);
 
+    int old_time = xTaskGetTickCount();
+    // while (/*条件*/)
+    // {
+    //     if (xTaskGetTickCount() - old_time >= 2500)
+    //     {//超时
+    //         esp_event_post(PRA, PRA_STOP_EVENT, NULL, 0, portMAX_DELAY);
+    //     }
+    // }
+    vTaskDelete(NULL);
+    //esprestart();
+}
 static void ota_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
+    xTaskCreate((TaskFunction_t)ota_task, "ota_task", 4096, NULL, 10, NULL);
+}
+
+// PowerRune_Events handles
+static void pra_stop(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
+{
+    switch (*((int *)event_data))
+    {
+    case 0:
+
+        break;
+    default:
+        break;
+    }
 }
 
 static uint8_t find_char_and_desr_index(uint16_t handle)
@@ -1174,7 +1418,7 @@ extern "C" void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t ga
 
 extern "C" void app_main(void)
 {
-    printf("\n");
+    printf("开始\n");
     // Initialize NVS
     esp_err_t ret;
     ret = nvs_flash_init();
@@ -1212,6 +1456,7 @@ extern "C" void app_main(void)
     // event loop
     // 创建默认事件循环
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+    // 创建大符事件循环
 
     // 注册事件handle
     // spp服务
@@ -1249,7 +1494,7 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register(ARMOR_ID_EVENTS, ARMOR_ID_EVENT_READ, armor_id_read_handler, NULL, NULL));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(ARMOR_ID_EVENTS, ARMOR_ID_EVENT_WRITE, armor_id_write_handler, NULL, NULL));
     // ops服务
-    //  Register run event handlers.
+    // Register run event handlers.
     ESP_ERROR_CHECK(esp_event_handler_instance_register(RUN_EVENTS, RUN_EVENT_WRITE, run_write_handler, NULL, NULL));
     // Register gpa event handlers.
     ESP_ERROR_CHECK(esp_event_handler_instance_register(GPA_EVENTS, GPA_EVENT_READ, gpa_read_handler, NULL, NULL));
@@ -1259,5 +1504,7 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register(STOP_EVENTS, STOP_EVENT_WRITE, stop_write_handler, NULL, NULL));
     // Register ota event handlers.
     ESP_ERROR_CHECK(esp_event_handler_instance_register(OTA_EVENTS, OTA_EVENT_WRITE, ota_write_handler, NULL, NULL));
-    return;
+    // PowerRune_Events
+    // Register pra_stop event handlers.
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(PRA, PRA_STOP_EVENT, pra_stop, NULL, NULL));
 }

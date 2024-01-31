@@ -15,10 +15,6 @@
 enum{
     SPP_IDX_SVC,
 
-    LED_CHAR,
-    LED_VAL,
-    LED_CFG,
-
     URL_CHAR,
     URL_VAL,
     URL_CFG,
