@@ -8,6 +8,7 @@
 #pragma once
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/event_groups.h"
 
 // NVS
 #include "nvs_flash.h"
@@ -16,6 +17,7 @@
 // Common
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_err.h"
 
 // 大符事件
 #include "PowerRune_Events.h"
@@ -295,9 +297,9 @@ public:
         // 完成OTA初始化
         // 启动Wifi
         ESP_ERROR_CHECK(esp_netif_init());
-        ESP_ERROR_CHECK(esp_event_loop_create_default());
+        ESP_GOTO_ON_ERROR(esp_event_loop_create_default(), err_out);
         wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+        ESP_GOTO_ON_ERROR(esp_wifi_init(&cfg), err_out);
 
         esp_netif_inherent_config_t esp_netif_config = ESP_NETIF_INHERENT_DEFAULT_WIFI_STA();
         // Warning: the interface desc is used in tests to capture actual connection details (IP, gw, mask)
@@ -337,12 +339,22 @@ public:
                 },
             },
         };
-        // 注册连接事件监听
-        esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, (esp_event_handler_t)Firmware::global_system_event_handler, args);
-        esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, (esp_event_handler_t)Firmware::global_system_event_handler, args);
         ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+
+        // Start Wifi Connection & EventGroup Bits
+        ESP_LOGI(TAG_FIRMWARE, "Connecting to %s...", config->get_config_common_info_pt()->SSID);
+        // Set Semaphore
+        EventGroupHandle_t wifi_event_group = xEventGroupCreate();
+        // 注册连接事件监听
+        esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, (esp_event_handler_t)Firmware::global_system_event_handler, &wifi_event_group);
+        esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, (esp_event_handler_t)Firmware::global_system_event_handler, &wifi_event_group);
+
         ESP_ERROR_CHECK(esp_wifi_connect());
         // Wait for connection
+        ESP_LOGI(TAG_FIRMWARE, "Waiting for connection");
+        xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
+        ESP_LOGI(TAG_FIRMWARE, "Connected to AP");
+
         ESP_LOGI(TAG_FIRMWARE, "OTA task complete");
         return ESP_OK;
     err_out:
@@ -354,9 +366,16 @@ public:
 
     static esp_err_t global_system_event_handler(void *handler_arg, esp_event_base_t base, int32_t id, void *event_data)
     {
-        switch (base)
+        if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED)
         {
+            esp_wifi_connect();
+            xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
         }
+        else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP)
+        {
+            xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
+        }
+
         return ESP_OK;
     }
 
