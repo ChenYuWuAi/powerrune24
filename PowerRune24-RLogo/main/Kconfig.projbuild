@@ -15,7 +15,7 @@ menu "PowerRune Project Configuration"
             The server address where the PowerRune update files are stored
 
     config OTA_TIMEOUT
-        int "Time limit(MS) for OTA HTTP Client"
+        int "Time limit(MS) for OTA task"
         default 20000
 
     config ESPNOW_TIMEOUT
@@ -35,6 +35,12 @@ menu "PowerRune Project Configuration"
     config DEFAULT_UPDATE_PWD
         string "PowerRune Update Default WiFi Password"
         default ""
+
+    config DEFAULT_UPDATE_TIME_OUT
+        int "OTA Timeout"
+        default 5000
+        help
+            Maximum time for reception
 
     config PR_NVS_NAMESPACE
         string "NVS Namespace for PowerRune"

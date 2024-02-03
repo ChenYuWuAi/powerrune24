@@ -7,12 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define SPP_DATA_MAX_LEN           (512)
-#define SPP_CMD_MAX_LEN            (20)
-#define SPP_STATUS_MAX_LEN         (20)
+#define SPP_DATA_MAX_LEN (512)
+#define SPP_CMD_MAX_LEN (20)
+#define SPP_STATUS_MAX_LEN (20)
 
-//系统参数设置服务
-enum{
+// 系统参数设置服务
+enum
+{
     SPP_IDX_SVC,
 
     URL_CHAR,
@@ -62,8 +63,9 @@ enum{
     SPP_IDX_NB,
 };
 
-//大符操作服务
-enum{
+// 大符操作服务
+enum
+{
     OPS_IDX_SVC,
 
     RUN_CHAR,
