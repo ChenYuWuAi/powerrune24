@@ -28,7 +28,7 @@ ESP_EVENT_DEFINE_BASE(PRA);
 ESP_EVENT_DEFINE_BASE(PRM);
 
 // 事件循环Handle
-extern esp_event_loop_handle_t pr_events_loop_handle = NULL;
+esp_event_loop_handle_t pr_events_loop_handle = NULL;
 
 // 公有事件
 enum
@@ -38,6 +38,14 @@ enum
     MOTOR_DISABLE_LOCKED,
     CONFIG_EVENT,
     CONFIG_COMPLETE_EVENT,
+};
+struct CONFIG_OTA_BEGIN_EVENT_DATA
+{
+    char url[200];
+};
+struct CONFIG_OTA_COMPLETE_EVENT_DATA
+{
+    char *version;
 };
 struct CONFIG_ARMOUR_EVENT_DATA
 {

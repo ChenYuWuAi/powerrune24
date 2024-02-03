@@ -29,7 +29,9 @@
 #include "esp_partition.h"
 #include "driver/gpio.h"
 
-#define OTA_BUF_SIZE 1024 // OTA缓冲区大小 单位：字节
+// OTA缓冲区大小 单位：字节
+#define OTA_BUF_SIZE 1024
+#define ERASE_NVS_FLASH_WHEN_OTA
 
 // LOG TAG
 static const char *TAG_FIRMWARE = "Firmware";
@@ -42,7 +44,7 @@ struct PowerRune_Common_config_info_t
 {
     // 主控MAC地址
     uint8_t main_control_mac[6];
-    char URL[256];
+    char URL[200];
     char SSID[20];
     char SSID_pwd[20];
     uint8_t auto_update;
@@ -404,6 +406,14 @@ public:
         {
             if (ota_state == ESP_OTA_IMG_PENDING_VERIFY)
             {
+#ifdef ERASE_NVS_FLASH_WHEN_OTA
+                esp_err_t err = ESP_OK;
+                ESP_LOGI(TAG_FIRMWARE, "Erasing NVS flash...");
+                ESP_ERROR_CHECK(nvs_flash_erase());
+                err = nvs_flash_init(); // Read config_common_info from NVS
+                if (err == ESP_OK)
+                    Config::reset();
+#endif
                 ESP_LOGI(TAG_FIRMWARE, "Diagnostics completed successfully! Continuing execution ...");
                 esp_ota_mark_app_valid_cancel_rollback();
             }
@@ -437,10 +447,10 @@ public:
 
             // led闪烁
             led->set_mode(2, 0);
-            xTaskCreate((TaskFunction_t)Firmware::task_OTA, "OTA", 4096, NULL, 5, &ota_task_handle);
+            xTaskCreate((TaskFunction_t)Firmware::task_OTA, "OTA", 8192, NULL, 5, &ota_task_handle);
             // Wait for OTA_COMPLETE_EVENT
             EventGroupHandle_t ota_event_group = xEventGroupCreate();
-            esp_event_handler_register_with(pr_events_loop_handle, OTA_EVENTS, OTA_COMPLETE_EVENT, (esp_event_handler_t)Firmware::global_pr_event_handler, ota_event_group);
+            esp_event_handler_register_with(pr_events_loop_handle, PRC, OTA_COMPLETE_EVENT, (esp_event_handler_t)Firmware::global_pr_event_handler, ota_event_group);
             xEventGroupWaitBits(ota_event_group, OTA_COMPLETE_BIT, false, true, portMAX_DELAY);
             // led停止
             led->set_mode(1, 0);
@@ -465,8 +475,8 @@ public:
         // Get Config
         const PowerRune_Common_config_info_t *config_common_info = Config::get_config_common_info_pt();
         // URL 处理
-        char file_url[255] = {0};
-        snprintf(file_url, 255, CONFIG_DEFAULT_UPDATE_FILE, config_common_info->URL, CONFIG_POWERRUNE_TYPE);
+        char file_url[200] = {0};
+        snprintf(file_url, 200, CONFIG_DEFAULT_UPDATE_FILE, config_common_info->URL, CONFIG_POWERRUNE_TYPE);
         ESP_LOGI(TAG_FIRMWARE, "Update URL: %s", file_url);
         esp_http_client_config_t config = {
             .url = file_url,
@@ -567,7 +577,7 @@ public:
                             goto ret;
                         }
                         image_header_was_checked = true;
-                        ESP_LOGI(TAG_FIRMWARE, "Writing to partition subtype %d at offset 0x%" PRIx32,
+                        ESP_LOGI(TAG_FIRMWARE, "Writing firmware to partition subtype %d at offset 0x%" PRIx32,
                                  update_partition->subtype, update_partition->address);
                         err = esp_ota_begin(update_partition, OTA_WITH_SEQUENTIAL_WRITES, &update_handle);
                         if (err != ESP_OK)
@@ -575,7 +585,7 @@ public:
                             ESP_LOGE(TAG_FIRMWARE, "esp_ota_begin failed (%s)", esp_err_to_name(err));
                             goto ret;
                         }
-                        ESP_LOGI(TAG_FIRMWARE, "esp_ota_begin succeeded");
+                        ESP_LOGI(TAG_FIRMWARE, "Downloading and flashing firmware...");
                     }
                     else
                     {
@@ -593,7 +603,7 @@ public:
                     goto ret;
                 }
                 read_length += data_read;
-                ESP_LOGI(TAG_FIRMWARE, "Written image length %d, progress %i %%.", read_length,
+                ESP_LOGD(TAG_FIRMWARE, "Written image length %d, progress %i %%.", read_length,
                          (int)((float)read_length / (float)content_length * 100));
             }
             else if (data_read == 0)
@@ -645,22 +655,15 @@ public:
         // post OTA_COMPLETE_EVENT and wait for ack
         ESP_LOGI(TAG_FIRMWARE, "OTA complete, ready to restart");
         err = ESP_OK;
-        esp_event_post_to(pr_events_loop_handle, OTA_EVENTS, OTA_COMPLETE_EVENT, &err, sizeof(esp_err_t), portMAX_DELAY);
+        esp_event_post_to(pr_events_loop_handle, PRC, OTA_COMPLETE_EVENT, &err, sizeof(esp_err_t), portMAX_DELAY);
         vTaskDelay(CONFIG_ESPNOW_TIMEOUT / portTICK_PERIOD_MS);
         esp_restart();
 
     ret:
         // OTA_COMPLETE_EVENT with err
-        esp_event_post_to(pr_events_loop_handle, OTA_EVENTS, OTA_COMPLETE_EVENT, &err, sizeof(esp_err_t), portMAX_DELAY);
-        if (err == ESP_ERR_NOT_SUPPORTED)
-            ESP_LOGW(TAG_FIRMWARE, "OTA skipped (%s)!", esp_err_to_name(err));
-        else
-            ESP_LOGE(TAG_FIRMWARE, "OTA failed (%s)!", esp_err_to_name(err));
+        esp_event_post_to(pr_events_loop_handle, PRC, OTA_COMPLETE_EVENT, &err, sizeof(esp_err_t), portMAX_DELAY);
 
-        if (update_handle != NULL)
-        {
-            esp_ota_abort(update_handle);
-        }
+        esp_ota_abort(update_handle);
         http_cleanup(client);
         // disconnect wifi and unregister event handler
         wifi_disconnect();
@@ -692,18 +695,38 @@ public:
     static void
     global_pr_event_handler(void *handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
     {
-        if (event_base == OTA_EVENTS && event_id == OTA_COMPLETE_EVENT)
+        if (event_base == PRC)
         {
-            esp_err_t *err = (esp_err_t *)event_data;
-            if (*err == ESP_OK || *err == ESP_ERR_NOT_SUPPORTED)
+            switch (event_id)
             {
-                ESP_LOGI(TAG_FIRMWARE, "OTA Complete");
-            }
-            else
+            case OTA_COMPLETE_EVENT:
             {
-                ESP_LOGE(TAG_FIRMWARE, "OTA Failed (%s)", esp_err_to_name(*err));
+                esp_err_t *err = (esp_err_t *)event_data;
+                if (*err == ESP_OK)
+                {
+                    ESP_LOGI(TAG_FIRMWARE, "OTA Complete");
+                    vTaskDelay(CONFIG_ESPNOW_TIMEOUT / portTICK_PERIOD_MS);
+                }
+                else if (*err == ESP_ERR_NOT_SUPPORTED)
+                {
+                    ESP_LOGW(TAG_FIRMWARE, "OTA Skipped (%s)", esp_err_to_name(*err));
+                }
+                else
+                {
+                    ESP_LOGE(TAG_FIRMWARE, "OTA Failed (%s)", esp_err_to_name(*err));
+                }
+                xEventGroupSetBits((EventGroupHandle_t)handler_arg, OTA_COMPLETE_BIT);
+                break;
             }
-            xEventGroupSetBits((EventGroupHandle_t)handler_arg, OTA_COMPLETE_BIT);
+            case OTA_BEGIN_EVENT:
+            {
+
+                ESP_LOGI(TAG_FIRMWARE, "OTA Triggered");
+                break;
+            }
+            default:
+                break;
+            }
         }
     }
 
