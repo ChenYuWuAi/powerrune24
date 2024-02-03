@@ -1,5 +1,6 @@
+#pragma once
+#include <firmware.h>
 #include "esp_event.h"
-#include "firmware.h"
 
 // 定义events
 // spp服务
@@ -27,7 +28,7 @@ ESP_EVENT_DEFINE_BASE(PRA);
 ESP_EVENT_DEFINE_BASE(PRM);
 
 // 事件循环Handle
-extern esp_event_loop_handle_t pr_events_loop_handle;
+extern esp_event_loop_handle_t pr_events_loop_handle = NULL;
 
 // 公有事件
 enum
@@ -42,8 +43,6 @@ struct CONFIG_ARMOUR_EVENT_DATA
 {
     PowerRune_Armour_config_info_t config_info;
     PowerRune_Common_config_info_t config_common_info;
-    // Bitmask
-    
 };
 struct CONFIG_RLOGO_EVENT_DATA
 {
@@ -55,7 +54,6 @@ struct CONFIG_MOTOR_EVENT_DATA
     PowerRune_Motor_config_info_t config_info;
     PowerRune_Common_config_info_t config_common_info;
 };
-
 
 // Armour事件
 enum

@@ -14,6 +14,14 @@ menu "PowerRune Project Configuration"
         help
             The server address where the PowerRune update files are stored
 
+    config OTA_TIMEOUT
+        int "Time limit(MS) for OTA task"
+        default 20000
+
+    config ESPNOW_TIMEOUT
+        int "Time limit(MS) for ESPNOW task"
+        default 3000
+
     config DEFAULT_UPDATE_FILE
         string "PowerRune Update Filename"
         default "PowerRune_%i_latest.bin"

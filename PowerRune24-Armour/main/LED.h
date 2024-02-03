@@ -17,6 +17,7 @@
 #include <string.h>
 
 #define LED_MAX_DUTY 4095
+#define TASK_LED_PRIORITY 1
 
 // LOG TAG
 static const char *TAG_LED = "LED";
@@ -59,17 +60,18 @@ public:
      *
      * @param gpio_num GPIO编号
      * @param invert 是否反转输出
-     * @param mode LED模式，0为常亮，1为呼吸灯，2为按编码闪烁
-     * @param blink_code 闪烁编码，闪烁blink_code次
+     * @param mode LED模式，0为常亮/常灭，1为呼吸灯，2为按编码闪烁
+     * @param blink_code 闪烁编码，闪烁blink_code次，常亮/常灭时控制开关
      */
     LED(gpio_num_t gpio_num, uint8_t invert = 1, uint8_t mode = 0, uint8_t blink_code = 0);
 
     /**
      * @brief 设置LED模式
      *
-     * @param mode LED模式，0为常亮，1为呼吸灯，2为按编码闪烁
+     * @param mode LED模式，0为常亮/常灭，1为呼吸灯，2为按编码闪烁
+     * @param blink_code 闪烁编码，闪烁blink_code次，常亮/常灭时控制开关
      */
-    esp_err_t set_mode(uint8_t mode);
+    esp_err_t set_mode(uint8_t mode, uint8_t blink_code = 0);
 
     /**
      * @brief 设置闪烁编码
@@ -80,6 +82,9 @@ public:
 
     ~LED();
 };
+
+// LED class static instance
+LED *led = NULL;
 
 IRAM_ATTR bool LED::fade_cb(const ledc_cb_param_t *param, void *user_arg)
 {
@@ -97,9 +102,9 @@ void LED::task_LED(void *pvParameter)
         switch (led->mode)
         {
         case 0:
-            ESP_ERROR_CHECK(gpio_set_level(led->gpio_num, !led->invert));
-            // delete task
-            vTaskDelete(NULL);
+            ESP_ERROR_CHECK(gpio_set_level(led->gpio_num, led->invert ? (!led->blink_code) : led->blink_code));
+            // suspend task
+            vTaskSuspend(NULL);
             break;
         case 1:
             if (led->fade_up)
@@ -188,21 +193,16 @@ LED::LED(gpio_num_t gpio_num, uint8_t invert, uint8_t mode, uint8_t blink_code)
     this->blink_code = blink_code;
     this->fade_up = 1;
     if (mode == 1)
-    {
         ESP_ERROR_CHECK(ledc_init(gpio_num, invert));
-    }
     else
-    {
         ESP_ERROR_CHECK(led_gpio_init(gpio_num));
-    }
 
     ESP_LOGI(TAG_LED, "LED mode: %d, blink_code: %d", mode, blink_code);
-    // create task when mode is not 0
-    if (mode != 0)
-        xTaskCreate(task_LED, "LED_blink_task", 8192, this, tskIDLE_PRIORITY, &task_handle);
+
+    xTaskCreate(task_LED, "LED_blink_task", 16384, this, TASK_LED_PRIORITY, &task_handle);
 }
 
-esp_err_t LED::set_mode(uint8_t mode)
+esp_err_t LED::set_mode(uint8_t mode, uint8_t blink_code)
 {
     // check args
     if (mode > 2)
@@ -218,17 +218,16 @@ esp_err_t LED::set_mode(uint8_t mode)
     {
         // deinit gpio
         ESP_ERROR_CHECK(gpio_reset_pin(gpio_num));
-        // init ledc
-        ESP_ERROR_CHECK(ledc_fade_func_install(0));
-        ledc_cbs_t callbacks = {
-            .fade_cb = fade_cb,
-        };
-        ESP_ERROR_CHECK(ledc_cb_register(ledc_channel.speed_mode, ledc_channel.channel, &callbacks, this));
+        ESP_ERROR_CHECK(ledc_init(gpio_num, invert));
     }
-    this->mode = mode;
-    // create task when mode is not 0
-    if (mode != 0)
-        xTaskCreate(task_LED, "LED_blink_task", 8192, this, tskIDLE_PRIORITY, &task_handle);
+    this->mode = mode; // check args
+    if (blink_code > 5)
+        return ESP_ERR_INVALID_ARG;
+    this->blink_code = blink_code;
+    // 如果任务被挂起，重新启动任务
+    if (eTaskGetState(task_handle) == eSuspended)
+        vTaskResume(task_handle);
+
     ESP_LOGI(TAG_LED, "LED mode: %d, blink_code: %d", mode, blink_code);
     return ESP_OK;
 }
@@ -240,6 +239,9 @@ esp_err_t LED::set_blink_code(uint8_t blink_code)
         return ESP_ERR_INVALID_ARG;
     this->blink_code = blink_code;
     ESP_LOGI(TAG_LED, "LED mode: %d, blink_code: %d", mode, blink_code);
+    // 如果任务被挂起，重新启动任务
+    if (eTaskGetState(task_handle) == eSuspended)
+        vTaskResume(task_handle);
     return ESP_OK;
 }
 

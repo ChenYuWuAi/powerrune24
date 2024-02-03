@@ -1,8 +1,8 @@
 /**
  * @file main.cpp
  * @brief 单元测试入口
- * @version 0.1
- * @date 2024-01-23
+ * @version 0.2
+ * @date 2024-02-02
  * @note 本文件不会被编译到固件中，只用于测试Common里面的通用类型库。
  */
 #include <stdio.h>
@@ -17,7 +17,38 @@
 #include <firmware.h>
 
 const char *TAG = "Unit Test";
+extern Config *config;
+extern LED *led;
+extern esp_event_loop_handle_t pr_events_loop_handle;
 
+// OTA测试代码
+extern "C" void app_main(void)
+{
+    // 在此编写单元测试代码
+    ESP_LOGI(TAG, "Unit Test Start");
+    led = new LED(GPIO_NUM_2);
+
+    // 启动事件循环
+    esp_event_loop_args_t loop_args = {
+        .queue_size = 10,
+        .task_name = "pr_events_loop",
+        .task_priority = 5,
+        .task_stack_size = 4096,
+        .task_core_id = 1,
+    };
+    ESP_ERROR_CHECK(esp_event_loop_create(&loop_args, &pr_events_loop_handle));
+
+    // Firmware init
+    Firmware firmware;
+
+    ESP_LOGI(TAG, "Unit Test End");
+
+    while (1)
+    {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+/* 大符Armour灯带库测试代码
 // 测试LED_Strip
 LED_Strip LED_Strip_0(GPIO_NUM_11, 301);
 LED_Strip LED_Strip_1(GPIO_NUM_11, 86);
@@ -105,3 +136,4 @@ extern "C" void app_main(void)
 
     ESP_LOGI(TAG, "Unit Test End");
 }
+*/
