@@ -4,7 +4,7 @@ menu "PowerRune Project Configuration"
 
     config POWERRUNE_TYPE
         int "PowerRune Driver Board Type"
-        default 0
+        default 1
         help
             PowerRune driver board type (0:ARMOUR, 1:RLOGO, 2:MOTORCTL)
 
@@ -24,7 +24,7 @@ menu "PowerRune Project Configuration"
 
     config DEFAULT_UPDATE_FILE
         string "PowerRune Update Filename"
-        default "PowerRune_%i_latest.bin"
+        default "%sPowerRune24-%i_latest.bin"
         help
             %i represents the driver board type (0:ARMOUR, 1:RLOGO, 2:MOTORCTL)
 

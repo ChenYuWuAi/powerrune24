@@ -1,3 +1,5 @@
+#pragma once
+#include <firmware.h>
 #include "esp_event.h"
 
 // 定义events
@@ -25,12 +27,40 @@ ESP_EVENT_DEFINE_BASE(PRC);
 ESP_EVENT_DEFINE_BASE(PRA);
 ESP_EVENT_DEFINE_BASE(PRM);
 
+// 事件循环Handle
+esp_event_loop_handle_t pr_events_loop_handle = NULL;
+
 // 公有事件
 enum
 {
     OTA_BEGIN_EVENT,
     OTA_COMPLETE_EVENT,
-    PING_EVENT,
+    MOTOR_DISABLE_LOCKED,
+    CONFIG_EVENT,
+    CONFIG_COMPLETE_EVENT,
+};
+struct CONFIG_OTA_BEGIN_EVENT_DATA
+{
+    char url[200];
+};
+struct CONFIG_OTA_COMPLETE_EVENT_DATA
+{
+    char *version;
+};
+struct CONFIG_ARMOUR_EVENT_DATA
+{
+    PowerRune_Armour_config_info_t config_info;
+    PowerRune_Common_config_info_t config_common_info;
+};
+struct CONFIG_RLOGO_EVENT_DATA
+{
+    PowerRune_Rlogo_config_info_t config_info;
+    PowerRune_Common_config_info_t config_common_info;
+};
+struct CONFIG_MOTOR_EVENT_DATA
+{
+    PowerRune_Motor_config_info_t config_info;
+    PowerRune_Common_config_info_t config_common_info;
 };
 
 // Armour事件
@@ -40,8 +70,7 @@ enum
     PRA_START_EVENT,
     PRA_HIT_EVENT,
     PRA_COMPLETE_EVENT,
-    PRA_CONFIG_EVENT,
-    PRA_CONFIG_DONE_EVENT,
+    PRA_COMPLETE_EVENT_EVENT,
 };
 
 // 电机事件
@@ -54,13 +83,4 @@ enum
     PRM_SPEED_STABLE_EVENT,
     PRM_STOP_EVENT,
     PRM_DISCONNECT_EVENT,
-};
-struct PRM_START_DONE_EVENT_DATA
-{
-    // mode 0 for normal, 1 for trace sin
-    int mode;
-    // speed in rpm is 10*19
-    float amplitude;
-    float omega;
-    float offset;
 };

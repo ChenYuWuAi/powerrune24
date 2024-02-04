@@ -2,11 +2,11 @@
 #include <stdio.h>
 #include "driver/gpio.h"
 #include "LED_Strip.h"
+#include "LED.h"
 #include "sdkconfig.h"
 
 // event loop
 #include "event_source.h"
-#include "PowerRune_Events.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -22,7 +22,7 @@
 #include "esp_gatts_api.h"
 #include "esp_bt_defs.h"
 #include "esp_bt_main.h"
-#include "ble_spp_server_demo.h"
+#include "main.h"
 
 // Firmware
 #include "firmware.h"
@@ -64,6 +64,11 @@ static const uint16_t ops_service_uuid = 0x1828;
 
 // LED_Strip
 LED_Strip LED_Strip_0(GPIO_NUM_10, 49);
+// LED Indicator
+extern LED *led;
+// Config Class
+extern Config *config;
+extern esp_event_loop_handle_t pr_events_loop_handle;
 
 /**
  * @brief Static array containing the advertising data for the BLE SPP server.
@@ -348,7 +353,6 @@ static const esp_gatts_attr_db_t spp_gatt_db[SPP_IDX_NB] = {
     [ARMOR_ID_CFG] = {{ESP_GATT_AUTO_RSP},
                       {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(armor_id_ccc), (uint8_t *)armor_id_ccc}},
 };
-}
 
 // 大符操作服务的属性表的相关全局变量
 // run
@@ -1423,15 +1427,21 @@ extern "C" void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t ga
 
 extern "C" void app_main(void)
 {
-    printf("开始\n");
-    // Initialize NVS
-    esp_err_t ret;
-    ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        nvs_flash_erase();
-        ret = nvs_flash_init();
-    }
+    led = new LED(GPIO_NUM_2);
+
+    // 启动事件循环
+    esp_event_loop_args_t loop_args = {
+        .queue_size = 10,
+        .task_name = "pr_events_loop",
+        .task_priority = 5,
+        .task_stack_size = 4096,
+        .task_core_id = 1,
+    };
+    ESP_ERROR_CHECK(esp_event_loop_create(&loop_args, &pr_events_loop_handle));
+
+    // Firmware init
+    Firmware firmware;
+    // BLE Start
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
 
     // Initialize GPIO
@@ -1457,11 +1467,6 @@ extern "C" void app_main(void)
     esp_ble_gap_register_callback(gap_event_handler);
     // 注册APP
     esp_ble_gatts_app_register(ESP_SPP_APP_ID);
-
-    // event loop
-    // 创建默认事件循环
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    // 创建大符事件循环
 
     // 注册事件handle
     // spp服务
@@ -1512,4 +1517,6 @@ extern "C" void app_main(void)
     // PowerRune_Events
     // Register pra_stop event handlers.
     ESP_ERROR_CHECK(esp_event_handler_instance_register(PRA, PRA_STOP_EVENT, pra_stop, NULL, NULL));
+
+    vTaskSuspend(NULL);
 }

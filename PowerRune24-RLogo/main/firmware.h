@@ -467,6 +467,7 @@ public:
         int read_length = 0;
         esp_http_client_handle_t client = NULL;
         int content_length;
+        int count = 0;
         bool image_header_was_checked = false;
 
         // Buffer
@@ -532,7 +533,6 @@ public:
         }
         update_partition = esp_ota_get_next_update_partition(NULL);
         assert(update_partition != NULL);
-        int count = 0;
         // HTTP stream receive
         while (1)
         {
@@ -605,7 +605,7 @@ public:
                 }
                 read_length += data_read;
                 count++;
-                if (count % 5 == 0)
+                if (count % 10 == 0)
                     ESP_LOGI(TAG_FIRMWARE, "Written image length %d, progress %i %%.", read_length,
                              (int)((float)read_length / (float)content_length * 100));
             }
