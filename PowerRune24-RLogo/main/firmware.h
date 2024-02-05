@@ -400,6 +400,7 @@ public:
         // 常亮LED
         led->set_mode(0, 1);
 
+        uint8_t ota_restart = 1;
         running = esp_ota_get_running_partition(); // 验证固件
         esp_ota_img_states_t ota_state;
         if (esp_ota_get_state_partition(running, &ota_state) == ESP_OK)
@@ -447,7 +448,7 @@ public:
 
             // led闪烁
             led->set_mode(2, 0);
-            xTaskCreate((TaskFunction_t)Firmware::task_OTA, "OTA", 8192, NULL, 5, &ota_task_handle);
+            xTaskCreate((TaskFunction_t)Firmware::task_OTA, "OTA", 8192, &ota_restart, 5, &ota_task_handle);
             // Wait for OTA_COMPLETE_EVENT
             EventGroupHandle_t ota_event_group = xEventGroupCreate();
             esp_event_handler_register_with(pr_events_loop_handle, PRC, OTA_COMPLETE_EVENT, (esp_event_handler_t)Firmware::global_pr_event_handler, ota_event_group);
@@ -655,12 +656,20 @@ public:
             ESP_LOGE(TAG_FIRMWARE, "esp_ota_set_boot_partition failed (%s)!", esp_err_to_name(err));
             goto ret;
         }
-        // post OTA_COMPLETE_EVENT and wait for ack
-        ESP_LOGI(TAG_FIRMWARE, "OTA complete, ready to restart");
-        err = ESP_OK;
-        esp_event_post_to(pr_events_loop_handle, PRC, OTA_COMPLETE_EVENT, &err, sizeof(esp_err_t), portMAX_DELAY);
-        vTaskDelay(CONFIG_ESPNOW_TIMEOUT / portTICK_PERIOD_MS);
-        esp_restart();
+        if (*((uint8_t *)args) == 1) // Restart enable
+        {
+            // post OTA_COMPLETE_EVENT and wait for ack
+            ESP_LOGI(TAG_FIRMWARE, "OTA complete, ready to restart");
+            err = ESP_OK;
+            esp_event_post_to(pr_events_loop_handle, PRC, OTA_COMPLETE_EVENT, &err, sizeof(esp_err_t), portMAX_DELAY);
+            vTaskDelay(CONFIG_ESPNOW_TIMEOUT / portTICK_PERIOD_MS);
+            esp_restart();
+        }
+        else
+        {
+            err = ESP_OK;
+            esp_event_post_to(pr_events_loop_handle, PRC, OTA_COMPLETE_EVENT, &err, sizeof(esp_err_t), portMAX_DELAY);
+        }
 
     ret:
         // OTA_COMPLETE_EVENT with err
