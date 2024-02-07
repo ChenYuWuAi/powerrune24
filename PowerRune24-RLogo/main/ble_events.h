@@ -1,4 +1,6 @@
 #pragma once
+#ifndef _BLE_EVENTS_H_
+#define _BLE_EVENTS_H_
 #include "esp_event.h"
 
 // 系统参数设置服务
@@ -596,3 +598,4 @@ static const esp_gatts_attr_db_t ops_gatt_db[OPS_IDX_NB] = {
     [OTA_CFG] = {{ESP_GATT_AUTO_RSP},
                  {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(ops_ota_ccc), (uint8_t *)ops_ota_ccc}},
 };
+#endif

@@ -3,6 +3,8 @@
  * @note 本文件存放蓝牙事件回调函数
  */
 #pragma once
+#ifndef _BLE_HANDLERS_H_
+#define _BLE_HANDLERS_H_
 #include "main.h"
 
 // event loop中的handle
@@ -680,3 +682,4 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
         break;
     }
 }
+#endif

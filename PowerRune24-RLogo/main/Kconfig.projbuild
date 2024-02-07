@@ -10,7 +10,7 @@ menu "PowerRune Project Configuration"
 
     config DEFAULT_UPDATE_URL
         string "PowerRune Update Server Address"
-        default "http://10.203.221.22/pr_ota_bin/"
+        default "http://gitee.com/chenyuwuai/pr-ota-bin/raw/master/"
         help
             The server address where the PowerRune update files are stored
 
@@ -21,6 +21,25 @@ menu "PowerRune Project Configuration"
     config ESPNOW_TIMEOUT
         int "Time limit(MS) for ESPNOW task"
         default 3000
+
+    config ESPNOW_PMK
+        string "ESPNOW primary master key"
+        default "z9BJ2ULDYA7vCxoM"
+        help
+            ESPNOW primary master for the example to use. The length of ESPNOW primary master must be 16 bytes.
+
+    config ESPNOW_LMK
+        string "ESPNOW local master key"
+        default "rv29b0wTgFb8Zozi"
+        help
+            ESPNOW local master for the example to use. The length of ESPNOW local master must be 16 bytes.
+
+    config ESPNOW_CHANNEL
+        int "Channel"
+        default 1
+        range 0 14
+        help
+            The channel on which sending and receiving ESPNOW data.
 
     config DEFAULT_UPDATE_FILE
         string "PowerRune Update Filename"

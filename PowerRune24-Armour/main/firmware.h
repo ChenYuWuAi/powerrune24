@@ -6,6 +6,8 @@
  */
 // FreeRTOS
 #pragma once
+#ifndef _FIRMWARE_H_
+#define _FIRMWARE_H_
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
@@ -756,3 +758,5 @@ public:
 // Firmware class static variable
 esp_app_desc_t Firmware::app_desc = {0};
 esp_netif_t *Firmware::netif = NULL;
+
+#endif

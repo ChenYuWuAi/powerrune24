@@ -6,6 +6,8 @@
  * @author CH
  */
 #pragma once
+#ifndef _LED_H_
+#define _LED_H_
 #include <driver/gpio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -251,3 +253,4 @@ LED::~LED()
     ledc_stop(LEDC_LOW_SPEED_MODE, ledc_channel.channel, 0);
     ledc_fade_func_uninstall();
 }
+#endif

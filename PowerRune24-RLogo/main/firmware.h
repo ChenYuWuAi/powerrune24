@@ -6,6 +6,8 @@
  */
 // FreeRTOS
 #pragma once
+#ifndef _FIRMWARE_H_
+#define _FIRMWARE_H_
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
@@ -42,9 +44,7 @@ extern esp_event_loop_handle_t pr_events_loop_handle;
 // Common Config
 struct PowerRune_Common_config_info_t
 {
-    // 主控MAC地址
-    uint8_t main_control_mac[6];
-    char URL[200];
+    char URL[100];
     char SSID[20];
     char SSID_pwd[20];
     uint8_t auto_update;
@@ -54,7 +54,7 @@ struct PowerRune_Common_config_info_t
 struct PowerRune_Armour_config_info_t
 {
     uint8_t brightness;
-    uint8_t armour_id; // 若没有设置，则为0xFF
+    uint8_t armour_id; // 应该从1开始，若没有设置，则为0x00
     uint8_t brightness_proportion_matrix;
     uint8_t brightness_proportion_edge;
 };
@@ -79,14 +79,14 @@ struct PowerRune_Motor_config_info_t
 class Config
 {
 protected:
-#if CONFIG_POWER_RUNE_TYPE == 0 // ARMOUR
+#if CONFIG_POWERRUNE_TYPE == 0 // ARMOUR
     static PowerRune_Armour_config_info_t config_info;
 
 #endif
-#if CONFIG_POWER_RUNE_TYPE == 1
+#if CONFIG_POWERRUNE_TYPE == 1
     static PowerRune_Rlogo_config_info_t config_info;
 #endif
-#if CONFIG_POWER_RUNE_TYPE == 2 // MOTORCTL
+#if CONFIG_POWERRUNE_TYPE == 2 // MOTORCTL
     static PowerRune_Motor_config_info_t config_info;
 #endif
     static PowerRune_Common_config_info_t config_common_info;
@@ -125,20 +125,20 @@ public:
     }
 
 // 获取数据指针
-#if CONFIG_POWER_RUNE_TYPE == 0 // ARMOUR
+#if CONFIG_POWERRUNE_TYPE == 0 // ARMOUR
     const PowerRune_Armour_config_info_t *get_config_info_pt()
     {
         return &config_info; // Read config_common_info from NVS
     }
 #endif
-#if CONFIG_POWER_RUNE_TYPE == 1
+#if CONFIG_POWERRUNE_TYPE == 1
     const PowerRune_Rlogo_config_info_t *get_config_info_pt()
     { // Read config_common_info from NVS
 
         return &config_info;
     }
 #endif
-#if CONFIG_POWER_RUNE_TYPE == 2 // MOTORCTL
+#if CONFIG_POWERRUNE_TYPE == 2 // MOTORCTL
     const PowerRune_Motor_config_info_t *get_config_info_pt()
     {
         return &config_info;
@@ -158,13 +158,13 @@ public:
         nvs_handle_t my_handle;
         ESP_ERROR_CHECK(nvs_open(CONFIG_PR_NVS_NAMESPACE, NVS_READWRITE, &my_handle));
 // BLOB
-#if CONFIG_POWER_RUNE_TYPE == 0 // ARMOUR
+#if CONFIG_POWERRUNE_TYPE == 0 // ARMOUR
         size_t required_size = sizeof(PowerRune_Armour_config_info_t);
 #endif
-#if CONFIG_POWER_RUNE_TYPE == 1
+#if CONFIG_POWERRUNE_TYPE == 1
         size_t required_size = sizeof(PowerRune_Rlogo_config_info_t);
 #endif
-#if CONFIG_POWER_RUNE_TYPE == 2 // MOTORCTL
+#if CONFIG_POWERRUNE_TYPE == 2 // MOTORCTL
         size_t required_size = sizeof(PowerRune_Motor_config_info_t);
 #endif
         size_t required_size_common = sizeof(PowerRune_Common_config_info_t);
@@ -184,13 +184,13 @@ public:
         nvs_handle_t my_handle;
         ESP_ERROR_CHECK(nvs_open(CONFIG_PR_NVS_NAMESPACE, NVS_READWRITE, &my_handle));
 // BLOB
-#if CONFIG_POWER_RUNE_TYPE == 0 // ARMOUR
+#if CONFIG_POWERRUNE_TYPE == 0 // ARMOUR
         size_t required_size = sizeof(PowerRune_Armour_config_info_t);
 #endif
-#if CONFIG_POWER_RUNE_TYPE == 1
+#if CONFIG_POWERRUNE_TYPE == 1
         size_t required_size = sizeof(PowerRune_Rlogo_config_info_t);
 #endif
-#if CONFIG_POWER_RUNE_TYPE == 2 // MOTORCTL
+#if CONFIG_POWERRUNE_TYPE == 2 // MOTORCTL
         size_t required_size = sizeof(PowerRune_Motor_config_info_t);
 #endif
         size_t required_size_common = sizeof(PowerRune_Common_config_info_t);
@@ -207,20 +207,20 @@ public:
 
     static esp_err_t reset()
     {
-#if CONFIG_POWER_RUNE_TYPE == 0 // ARMOUR
+#if CONFIG_POWERRUNE_TYPE == 0 // ARMOUR
         config_info = {
             .brightness = 127,
-            .armour_id = 0xFF,
+            .armour_id = 0,
             .brightness_proportion_matrix = 127,
             .brightness_proportion_edge = 127,
         };
 #endif
-#if CONFIG_POWER_RUNE_TYPE == 1
+#if CONFIG_POWERRUNE_TYPE == 1
         config_info = {
             .brightness = 127,
         };
 #endif
-#if CONFIG_POWER_RUNE_TYPE == 2 // MOTORCTL
+#if CONFIG_POWERRUNE_TYPE == 2 // MOTORCTL
         // float Kp = 1.2, float Ki = 0.2, float Kd = 0.5, float Pmax = 1000, float Imax = 1000, float Dmax = 1000, float max = 2000
         config_info = {
             .kp = 1.2,
@@ -234,7 +234,6 @@ public:
         };
 #endif
         config_common_info = {
-            .main_control_mac = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
             .URL = CONFIG_DEFAULT_UPDATE_URL, // 需要往后加上CONFIG_DEFAULT_UPDATE_FILE
             .SSID = CONFIG_DEFAULT_UPDATE_SSID,
             .SSID_pwd = CONFIG_DEFAULT_UPDATE_PWD,
@@ -251,15 +250,15 @@ public:
         {
             memcpy(&config_common_info, event_data, sizeof(PowerRune_Common_config_info_t));
 // event_data: PowerRune_Common_config_info_t, PowerRune_Armour/RLogo/Motor_config_info_t
-#if CONFIG_POWER_RUNE_TYPE == 0 // ARMOUR
+#if CONFIG_POWERRUNE_TYPE == 0 // ARMOUR
             PowerRune_Armour_config_info_t *info = (PowerRune_Armour_config_info_t *)event_data + sizeof(PowerRune_Common_config_info_t);
             memcpy(&config_info, info, sizeof(PowerRune_Armour_config_info_t));
 #endif
-#if CONFIG_POWER_RUNE_TYPE == 1
+#if CONFIG_POWERRUNE_TYPE == 1
             PowerRune_Rlogo_config_info_t *info = (PowerRune_Rlogo_config_info_t *)event_data + sizeof(PowerRune_Common_config_info_t);
             memcpy(&config_info, info, sizeof(PowerRune_Rlogo_config_info_t));
 #endif
-#if CONFIG_POWER_RUNE_TYPE == 2 // MOTORCTL
+#if CONFIG_POWERRUNE_TYPE == 2 // MOTORCTL
             PowerRune_Motor_config_info_t *info = (PowerRune_Motor_config_info_t *)event_data + sizeof(PowerRune_Common_config_info_t);
             memcpy(&config_info, info, sizeof(PowerRune_Motor_config_info_t));
 #endif
@@ -274,15 +273,15 @@ public:
 // Config class variable
 Config *config = NULL;
 
-#if CONFIG_POWER_RUNE_TYPE == 0 // ARMOUR
+#if CONFIG_POWERRUNE_TYPE == 0 // ARMOUR
 const char *Config::PowerRune_description = "Armour";
 PowerRune_Armour_config_info_t Config::config_info = {0};
 #endif
-#if CONFIG_POWER_RUNE_TYPE == 1
+#if CONFIG_POWERRUNE_TYPE == 1
 const char *Config::PowerRune_description = "RLogo";
 PowerRune_Rlogo_config_info_t Config::config_info = {0};
 #endif
-#if CONFIG_POWER_RUNE_TYPE == 2 // MOTORCTL
+#if CONFIG_POWERRUNE_TYPE == 2 // MOTORCTL
 const char *Config::PowerRune_description = "Motor";
 PowerRune_Motor_config_info_t Config::config_info = {0};
 #endif
@@ -305,7 +304,12 @@ private:
 
     // netif handle
     static esp_netif_t *netif;
-    static esp_err_t wifi_init()
+
+    /**
+     * @brief HTTP协议栈Wifi初始化
+     *
+     */
+    static esp_err_t wifi_ota_init()
     {
         // 启动Wifi
         ESP_ERROR_CHECK(esp_netif_init());
@@ -326,6 +330,7 @@ private:
         esp_wifi_set_ps(WIFI_PS_NONE);
         return ESP_OK;
     }
+
     static esp_err_t wifi_connect(const PowerRune_Common_config_info_t *config_common_info, uint8_t retryNum)
     {
         // Retry counter
@@ -440,7 +445,7 @@ public:
             ESP_LOGI(TAG_FIRMWARE, "PowerRune %s version: %s, Hash: %s", Config::PowerRune_description, app_desc.version, hash_print);
         }
         // 启动Wifi
-        wifi_init();
+        wifi_ota_init();
         if (config->get_config_common_info_pt()->auto_update)
         {
             // Start OTA
@@ -756,3 +761,5 @@ public:
 // Firmware class static variable
 esp_app_desc_t Firmware::app_desc = {0};
 esp_netif_t *Firmware::netif = NULL;
+
+#endif

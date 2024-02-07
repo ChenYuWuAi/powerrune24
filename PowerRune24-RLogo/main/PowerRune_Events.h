@@ -35,32 +35,49 @@ enum
 {
     OTA_BEGIN_EVENT,
     OTA_COMPLETE_EVENT,
-    MOTOR_DISABLE_LOCKED,
     CONFIG_EVENT,
     CONFIG_COMPLETE_EVENT,
+    RESPONSE_EVENT,
 };
 struct CONFIG_OTA_BEGIN_EVENT_DATA
 {
-    char url[200];
-};
+    uint8_t address;
+    uint8_t data_len = 140;
+    char url[100];
+    char SSID[20];
+    char password[20];
+}; // Size: 140 + 2
 struct CONFIG_OTA_COMPLETE_EVENT_DATA
 {
-    char *version;
-};
+    uint8_t address;
+    uint8_t data_len = 1;
+    esp_err_t status;
+}; // Size: 1 + 2
 struct CONFIG_ARMOUR_EVENT_DATA
 {
+    uint8_t address;
+    uint8_t data_len = sizeof(PowerRune_Armour_config_info_t) + sizeof(PowerRune_Common_config_info_t);
     PowerRune_Armour_config_info_t config_info;
-    PowerRune_Common_config_info_t config_common_info;
-};
-struct CONFIG_RLOGO_EVENT_DATA
-{
-    PowerRune_Rlogo_config_info_t config_info;
     PowerRune_Common_config_info_t config_common_info;
 };
 struct CONFIG_MOTOR_EVENT_DATA
 {
+    uint8_t address;
+    uint8_t data_len = sizeof(PowerRune_Motor_config_info_t) + sizeof(PowerRune_Common_config_info_t);
     PowerRune_Motor_config_info_t config_info;
     PowerRune_Common_config_info_t config_common_info;
+};
+struct CONFIG_RLOGO_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PowerRune_Rlogo_config_info_t) + sizeof(PowerRune_Common_config_info_t);
+    PowerRune_Rlogo_config_info_t config_info;
+    PowerRune_Common_config_info_t config_common_info;
+};
+struct RESPONSE_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len;
 };
 
 // Armour事件
@@ -70,7 +87,14 @@ enum
     PRA_START_EVENT,
     PRA_HIT_EVENT,
     PRA_COMPLETE_EVENT,
-    PRA_COMPLETE_EVENT_EVENT,
+    PRA_PING_EVENT,
+};
+
+struct PRA_PING_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PowerRune_Armour_config_info_t);
+    PowerRune_Armour_config_info_t config_info;
 };
 
 // 电机事件
@@ -83,4 +107,12 @@ enum
     PRM_SPEED_STABLE_EVENT,
     PRM_STOP_EVENT,
     PRM_DISCONNECT_EVENT,
+    PRM_PING_EVENT,
+};
+
+struct PRM_PING_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PowerRune_Motor_config_info_t);
+    PowerRune_Motor_config_info_t config_info;
 };

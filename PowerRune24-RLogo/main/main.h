@@ -9,6 +9,7 @@
 #include "LED_Strip.h"
 #include "LED.h"
 
+// Common
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
@@ -17,16 +18,19 @@
 #include "nvs_flash.h"
 #include "esp_bt.h"
 #include "string.h"
+#include "esp_random.h"
 
+// BLE
 #include "esp_gap_ble_api.h"
 #include "esp_gatts_api.h"
 #include "esp_bt_defs.h"
 #include "esp_bt_main.h"
 
+// Messager
+#include "espnow_protocol.h"
+
 // Firmware
 #include "firmware.h"
-
-
 
 // LED_Strip
 LED_Strip LED_Strip_0(GPIO_NUM_10, 49);

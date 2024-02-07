@@ -10,7 +10,7 @@ int IS_HIT = 0;
 int hitted_ID = 0;
 
 // 等待击打
-int start_pra_and_wait_hit(int expected_ID)
+int start_pra_and_wait_hit(uint8_t expected_ID)
 {
     esp_event_post(PRA, PRA_START_EVENT, NULL, 0, portMAX_DELAY);
 
@@ -178,8 +178,7 @@ extern "C" void app_main(void)
     // BLE Start
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
 
-    
-    // 获取ble默认配置
+        // 获取ble默认配置
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
 
     esp_bt_controller_init(&bt_cfg);
