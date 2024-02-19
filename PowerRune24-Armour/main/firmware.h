@@ -1,8 +1,8 @@
 /**
  * @file firmware.h
  * @brief 大符固件支持库，支持Flash Config读写、OTA升级
- * @version 1.0
- * @date 2024-02-03
+ * @version 1.1
+ * @date 2024-02-19
  */
 // FreeRTOS
 #pragma once
@@ -104,9 +104,9 @@ public:
 #if CONFIG_POWERRUNE_TYPE == 1
     const PowerRune_Rlogo_config_info_t *get_config_info_pt();
 
-    const PowerRune_Armour_config_info_t *get_config_armour_info_pt(uint8_t index);
+    PowerRune_Armour_config_info_t *get_config_armour_info_pt(uint8_t index);
 
-    const PowerRune_Motor_config_info_t *get_config_motor_info_pt();
+    PowerRune_Motor_config_info_t *get_config_motor_info_pt();
 #endif
 #if CONFIG_POWERRUNE_TYPE == 2 // MOTORCTL
     const PowerRune_Motor_config_info_t *get_config_info_pt();

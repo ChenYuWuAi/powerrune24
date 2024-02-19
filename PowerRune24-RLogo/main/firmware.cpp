@@ -1,7 +1,7 @@
 /**
  * @file firmware.cpp
  * @brief 固件类
- * @version 0.2
+ * @version 0.3
  * @date 2024-02-19
  */
 #include "firmware.h"
@@ -78,12 +78,12 @@ const PowerRune_Rlogo_config_info_t *Config::get_config_info_pt()
     return &config_info;
 }
 
-const PowerRune_Armour_config_info_t *Config::get_config_armour_info_pt(uint8_t index)
+PowerRune_Armour_config_info_t *Config::get_config_armour_info_pt(uint8_t index)
 {
     return &config_armour_info[index];
 }
 
-const PowerRune_Motor_config_info_t *Config::get_config_motor_info_pt()
+PowerRune_Motor_config_info_t *Config::get_config_motor_info_pt()
 {
     return &config_motor_info;
 }

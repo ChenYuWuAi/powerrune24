@@ -1,7 +1,7 @@
 /**
  * @file espnow_protocol.cpp
  * @brief ESP-NOW协议类定义，用于ESP-NOW通信
- * @version 0.2
+ * @version 0.3
  * @date 2024-02-19
  * @note 本文件存放ESP-NOW协议类的定义，Wifi硬件初始化，esp-now的发送和接收回调函数，事件处理
  */
@@ -654,23 +654,24 @@ void ESPNowProtocol::reset_id_PRA_HIT_handler(void *event_handler_arg,
                                               void *event_data)
 {
     reset_armour_id_t *reset_armour_id_data = (reset_armour_id_t *)event_handler_arg;
-    EventGroupHandle_t reset_armour_id_event_group = reset_armour_id_data->event_group;
     PRA_HIT_EVENT_DATA *pra_hit_event_data = (PRA_HIT_EVENT_DATA *)event_data;
     if (pra_hit_event_data->address > 4)
         ESP_LOGE(TAG_MESSAGER, "[Reset ID] Address %i out of range", pra_hit_event_data->address);
 
     ESP_LOGI(TAG_MESSAGER, "[Reset ID] Hit event received from address %i", pra_hit_event_data->address);
 
-    EventBits_t n = xEventGroupGetBits(reset_armour_id_event_group);
+    EventBits_t n = xEventGroupGetBits(reset_armour_id_data->event_group);
     uint8_t count = 0;
     while (n)
     {
         count++;
         n &= (n - 1);
     }
-    xEventGroupSetBits(reset_armour_id_event_group, 1 << pra_hit_event_data->address);
+    xEventGroupSetBits(reset_armour_id_data->event_group, 1 << pra_hit_event_data->address);
     // 写入新MAC
     memcpy(reset_armour_id_data->mac_addr_new + count, mac_addr[pra_hit_event_data->address], ESP_NOW_ETH_ALEN);
+    // 写入新Config
+    memcpy(reset_armour_id_data->armour_config + count, config->get_config_armour_info_pt(pra_hit_event_data->address), sizeof(PowerRune_Armour_config_info_t));
 }
 
 esp_err_t ESPNowProtocol::reset_armour_id()
@@ -681,26 +682,41 @@ esp_err_t ESPNowProtocol::reset_armour_id()
     // 事件位
     EventGroupHandle_t reset_armour_id_event_group = xEventGroupCreate();
     reset_armour_id_t reset_armour_id_data;
-    // 注册所需事件
-    esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, reset_id_PRA_HIT_handler, &reset_armour_id_data);
+    // 交换配置信息
+    PowerRune_Armour_config_info_t *config_info = new PowerRune_Armour_config_info_t[5];
+    reset_armour_id_data.event_group = reset_armour_id_event_group;
+    reset_armour_id_data.armour_config = config_info;
 
     // 遍历address_old中的五个armour_id
     PRA_START_EVENT_DATA pra_start_event_data;
     uint8_t mac_addr_old[6][ESP_NOW_ETH_ALEN];
     memcpy(mac_addr_old, mac_addr, sizeof(mac_addr_old));
+
+    // 注册所需事件
+    esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, reset_id_PRA_HIT_handler, &reset_armour_id_data);
     for (size_t i = 0; i < 5; i++)
     {
         pra_start_event_data.address = i;
         esp_event_post_to(pr_events_loop_handle, PRA, PRA_START_EVENT, &pra_start_event_data, sizeof(PRA_START_EVENT_DATA), portMAX_DELAY);
         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     }
-
     // 等待全部击中，0b11111
     xEventGroupWaitBits(reset_armour_id_event_group, 0x1F, pdTRUE, pdTRUE, portMAX_DELAY);
+    // 写入新MAC和新配置
     memcpy(mac_addr, reset_armour_id_data.mac_addr_new, 5 * ESP_NOW_ETH_ALEN);
+    for (size_t i = 0; i < 5; i++)
+    {
+        memcpy(config->get_config_armour_info_pt(i), reset_armour_id_data.armour_config + i, sizeof(PowerRune_Armour_config_info_t));
+        // 发送CONFIG_EVENT
+        CONFIG_EVENT_DATA pra_config_event_data;
+        pra_config_event_data.address = i;
+        memcpy(&pra_config_event_data.config_armour_info, config->get_config_armour_info_pt(i), sizeof(PowerRune_Armour_config_info_t));
+        memcpy(&pra_config_event_data.config_common_info, config->get_config_common_info_pt(), sizeof(PowerRune_Common_config_info_t));
+        esp_event_post_to(pr_events_loop_handle, PRA, CONFIG_EVENT, &pra_config_event_data, sizeof(CONFIG_EVENT_DATA), portMAX_DELAY);
+        xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    }
     ESP_LOGI(TAG_MESSAGER, "[Reset ID] PowerRune Armour ID reset done");
     esp_event_handler_unregister_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, reset_id_PRA_HIT_handler);
-
     return ESP_OK;
 }
 #endif
@@ -856,6 +872,8 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
                     memcpy(peer->lmk, CONFIG_ESPNOW_LMK, ESP_NOW_KEY_LEN);
                     memcpy(peer->peer_addr, received_data->src_MAC, ESP_NOW_ETH_ALEN);
                     ESP_ERROR_CHECK(esp_now_add_peer(peer));
+                    // 保存设备配置
+                    memcpy(&packet.event_data[2], config->get_config_armour_info_pt(packet.event_data[0]), sizeof(PowerRune_Armour_config_info_t));
                     // 发送RESPONSE_EVENT
                     int32_t event_id = RESPONSE_EVENT;
                     send_data(0, received_data->src_MAC, PRC, event_id, NULL, 0, 0);
@@ -868,7 +886,7 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
                     reset_id = true;
                     // 寻找空位
                     uint8_t i;
-                    for (i = 0; i < 1; i++) // TODO
+                    for (i = 0; i < 1; i++) // TODO，改成设备数
                     {
                         if (memcmp(mac_addr[i], NULL_mac, ESP_NOW_ETH_ALEN) == 0)
                         {
@@ -881,6 +899,8 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
                             memcpy(peer->lmk, CONFIG_ESPNOW_LMK, ESP_NOW_KEY_LEN);
                             memcpy(peer->peer_addr, received_data->src_MAC, ESP_NOW_ETH_ALEN);
                             ESP_ERROR_CHECK(esp_now_add_peer(peer));
+                            // 保存设备配置
+                            memcpy(&packet.event_data[2], config->get_config_armour_info_pt(i), sizeof(PowerRune_Armour_config_info_t));
                             // 发送RESPONSE_EVENT
                             int32_t event_id = RESPONSE_EVENT;
                             send_data(0, received_data->src_MAC, PRC, event_id, NULL, 0, 0);
@@ -898,7 +918,8 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
             }
             else if (packet.event_data[0] == MOTOR) // Address
             {
-                memcpy(mac_addr[MOTOR], received_data->src_MAC, ESP_NOW_ETH_ALEN);
+                memcpy(mac_addr[MOTOR], received_data->src_MAC, ESP_NOW_ETH_ALEN); // 保存设备配置
+                memcpy(&packet.event_data[2], config->get_config_motor_info_pt(), sizeof(PowerRune_Armour_config_info_t));
             }
             else
             {
