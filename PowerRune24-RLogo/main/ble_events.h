@@ -1,3 +1,7 @@
+/**
+ * @file ble_events.h
+ * @note BLE声明
+*/
 #pragma once
 #ifndef _BLE_EVENTS_H_
 #define _BLE_EVENTS_H_
@@ -48,9 +52,9 @@ enum
     PID_VAL,
     PID_CFG,
 
-    ARMOR_ID_CHAR,
-    ARMOR_ID_VAL,
-    ARMOR_ID_CFG,
+    ARMOUR_ID_CHAR,
+    ARMOUR_ID_VAL,
+    ARMOUR_ID_CFG,
 
     SPP_IDX_NB,
 };
@@ -110,7 +114,7 @@ static const uint16_t spp_service_uuid = 0x1827; // Mesh Proxy Service
 #define UUID_R_LIT 0x2A9B      // Body Composition Feature
 #define UUID_MATRIX_LIT 0x2A9C // Body Composition Measurement
 #define UUID_PID 0x2A66        // Cycling Power Control Point
-#define UUID_ARMOR_ID 0x2B1F   // Reconnection Configuration Control Point
+#define UUID_ARMOUR_ID 0x2B1F  // Reconnection Configuration Control Point
 
 // 大符操作服务的UUID
 static const uint16_t ops_service_uuid = 0x1828;
@@ -216,7 +220,8 @@ typedef struct spp_receive_data_buff
 static spp_receive_data_buff_t SppRecvDataBuff = {
     .node_num = 0,
     .buff_size = 0,
-    .first_node = NULL};
+    .first_node = NULL,
+};
 
 extern "C" void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 
@@ -321,11 +326,11 @@ enum
     PID_EVENT_WRITE,
 };
 
-ESP_EVENT_DECLARE_BASE(ARMOR_ID_EVENTS);
+ESP_EVENT_DECLARE_BASE(ARMOUR_ID_EVENTS);
 enum
 {
-    ARMOR_ID_EVENT_READ,
-    ARMOR_ID_EVENT_WRITE,
+    ARMOUR_ID_EVENT_READ,
+    ARMOUR_ID_EVENT_WRITE,
 };
 // OPS服务
 ESP_EVENT_DECLARE_BASE(RUN_EVENTS);
@@ -399,10 +404,10 @@ static const uint8_t matrix_lit_ccc[1] = {0};
 static const uint16_t pid_uuid = UUID_PID;
 static const u_int8_t pid_val[1] = {0};
 static const uint8_t pid_ccc[1] = {0};
-// armor_id
-static const uint16_t armor_id_uuid = UUID_ARMOR_ID;
-static const u_int8_t armor_id_val[1] = {0};
-static const uint8_t armor_id_ccc[1] = {0};
+// armour_id
+static const uint16_t armour_id_uuid = UUID_ARMOUR_ID;
+static const u_int8_t armour_id_val[1] = {0};
+static const uint8_t armour_id_ccc[1] = {0};
 
 // 系统参数设置服务的属性表
 static const esp_gatts_attr_db_t spp_gatt_db[SPP_IDX_NB] = {
@@ -510,15 +515,15 @@ static const esp_gatts_attr_db_t spp_gatt_db[SPP_IDX_NB] = {
     [PID_CFG] = {{ESP_GATT_AUTO_RSP},
                  {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(pid_ccc), (uint8_t *)pid_ccc}},
 
-    // armor_id
-    [ARMOR_ID_CHAR] = {{ESP_GATT_AUTO_RSP},
-                       {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+    // armour_id
+    [ARMOUR_ID_CHAR] = {{ESP_GATT_AUTO_RSP},
+                        {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
-    [ARMOR_ID_VAL] = {{ESP_GATT_AUTO_RSP},
-                      {ESP_UUID_LEN_16, (uint8_t *)&armor_id_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(armor_id_val), sizeof(armor_id_val), (uint8_t *)armor_id_val}},
+    [ARMOUR_ID_VAL] = {{ESP_GATT_AUTO_RSP},
+                       {ESP_UUID_LEN_16, (uint8_t *)&armour_id_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(armour_id_val), sizeof(armour_id_val), (uint8_t *)armour_id_val}},
 
-    [ARMOR_ID_CFG] = {{ESP_GATT_AUTO_RSP},
-                      {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(armor_id_ccc), (uint8_t *)armor_id_ccc}},
+    [ARMOUR_ID_CFG] = {{ESP_GATT_AUTO_RSP},
+                       {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(armour_id_ccc), (uint8_t *)armour_id_ccc}},
 };
 
 // 大符操作服务的属性表的相关全局变量

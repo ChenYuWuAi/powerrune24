@@ -1,34 +1,5 @@
-/**
- * @file DEMUX.h
- * @brief DEMUX驱动
- * @version 0.1
- * @date 2024-01-24
- * @author CH
- */
-#pragma once
-#include "driver/gpio.h"
-template <uint8_t BITS>
-class DEMUX
-{
-private:
-    gpio_num_t DEMUX_IO[BITS]; // LSB -> MSB
-    gpio_num_t DEMUX_IO_enable;
-    uint8_t channel;
-    uint8_t enable_state;
-
-public:
-    DEMUX(gpio_num_t *DEMUX_IO, gpio_num_t DEMUX_IO_enable, uint8_t chan = 0, uint8_t enable = 0);
-    esp_err_t enable();
-    esp_err_t disable();
-    esp_err_t set_channel(uint8_t channel);
-    uint8_t get_state();
-    uint8_t get_channel();
-    uint8_t &operator=(uint8_t channel);
-    ~DEMUX();
-};
-
-template <uint8_t BITS>
-DEMUX<BITS>::DEMUX(gpio_num_t *DEMUX_addr_IO, gpio_num_t DEMUX_IO_enable, uint8_t chan, uint8_t enable)
+#include "DEMUX.h"
+DEMUX::DEMUX(const gpio_num_t *DEMUX_addr_IO, gpio_num_t DEMUX_IO_enable, uint8_t chan, uint8_t enable)
 {
     this->DEMUX_IO_enable = DEMUX_IO_enable;
     this->channel = chan;
@@ -53,24 +24,21 @@ DEMUX<BITS>::DEMUX(gpio_num_t *DEMUX_addr_IO, gpio_num_t DEMUX_IO_enable, uint8_
     this->set_channel(this->channel);
 }
 
-template <uint8_t BITS>
-esp_err_t DEMUX<BITS>::enable()
+esp_err_t DEMUX::enable()
 {
     this->enable_state = 1;
     gpio_set_level(this->DEMUX_IO_enable, !this->enable_state); // 低电平有效
     return ESP_OK;
 }
 
-template <uint8_t BITS>
-esp_err_t DEMUX<BITS>::disable()
+esp_err_t DEMUX::disable()
 {
-    this->enable = 0;
-    gpio_set_level(this->DEMUX_IO_enable, !this->enable); // 低电平有效
+    this->enable_state = 0;
+    gpio_set_level(this->DEMUX_IO_enable, !this->enable_state); // 低电平有效
     return ESP_OK;
 }
 
-template <uint8_t BITS>
-esp_err_t DEMUX<BITS>::set_channel(uint8_t channel)
+esp_err_t DEMUX::set_channel(uint8_t channel)
 {
     if (channel > (1 << BITS) - 1)
     {
@@ -84,27 +52,23 @@ esp_err_t DEMUX<BITS>::set_channel(uint8_t channel)
     return ESP_OK;
 }
 
-template <uint8_t BITS>
-uint8_t DEMUX<BITS>::get_state()
+uint8_t DEMUX::get_state()
 {
-    return this->enable;
+    return this->enable_state;
 }
 
-template <uint8_t BITS>
-uint8_t DEMUX<BITS>::get_channel()
+uint8_t DEMUX::get_channel()
 {
     return this->channel;
 }
 
-template <uint8_t BITS>
-uint8_t &DEMUX<BITS>::operator=(uint8_t channel)
+uint8_t &DEMUX::operator=(uint8_t channel)
 {
     this->set_channel(channel);
     return this->channel;
 }
 
-template <uint8_t BITS>
-DEMUX<BITS>::~DEMUX()
+DEMUX::~DEMUX()
 {
     gpio_reset_pin(this->DEMUX_IO_enable);
     for (uint8_t i = 0; i < BITS; i++)

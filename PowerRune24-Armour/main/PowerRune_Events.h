@@ -1,6 +1,13 @@
+/**
+ * @file PowerRune_Events.h
+ * @brief 大符事件库
+ * @version 1.1
+ * @date 2024-02-19
+ */
 #pragma once
-#include <firmware.h>
+#include "firmware.h"
 #include "esp_event.h"
+#include "espnow_protocol.h"
 
 // 定义events
 // spp服务
@@ -15,7 +22,7 @@ ESP_EVENT_DEFINE_BASE(STRIP_LIT_EVENTS);
 ESP_EVENT_DEFINE_BASE(R_LIT_EVENTS);
 ESP_EVENT_DEFINE_BASE(MATRIX_LIT_EVENTS);
 ESP_EVENT_DEFINE_BASE(PID_EVENTS);
-ESP_EVENT_DEFINE_BASE(ARMOR_ID_EVENTS);
+ESP_EVENT_DEFINE_BASE(ARMOUR_ID_EVENTS);
 // ops服务
 ESP_EVENT_DEFINE_BASE(RUN_EVENTS);
 ESP_EVENT_DEFINE_BASE(GPA_EVENTS);
@@ -26,42 +33,55 @@ ESP_EVENT_DEFINE_BASE(OTA_EVENTS);
 ESP_EVENT_DEFINE_BASE(PRC);
 ESP_EVENT_DEFINE_BASE(PRA);
 ESP_EVENT_DEFINE_BASE(PRM);
-
+#pragma pack(1)
 // 事件循环Handle
-esp_event_loop_handle_t pr_events_loop_handle = NULL;
-
+extern esp_event_loop_handle_t pr_events_loop_handle;
+// ADDRESS
+// 5个ESP32S3[0:4], 1个ESP32C3[5]
 // 公有事件
 enum
 {
     OTA_BEGIN_EVENT,
     OTA_COMPLETE_EVENT,
-    MOTOR_DISABLE_LOCKED,
     CONFIG_EVENT,
     CONFIG_COMPLETE_EVENT,
+    RESPONSE_EVENT,
+    BEACON_TIMEOUT_EVENT,
 };
-struct CONFIG_OTA_BEGIN_EVENT_DATA
+
+struct OTA_BEGIN_EVENT_DATA
 {
-    char url[200];
+    uint8_t address = 0xFF;
+    uint8_t data_len = sizeof(OTA_BEGIN_EVENT_DATA);
 };
-struct CONFIG_OTA_COMPLETE_EVENT_DATA
+struct OTA_COMPLETE_EVENT_DATA
 {
-    char *version;
+    uint8_t address = 0xFF;
+    uint8_t data_len = sizeof(OTA_COMPLETE_EVENT_DATA);
+    esp_err_t status;
+    uint8_t ota_type; // 1 for startup ota, 0&2 for manual ota
 };
-struct CONFIG_ARMOUR_EVENT_DATA
+struct CONFIG_EVENT_DATA // 比较浪费，但是省事
 {
-    PowerRune_Armour_config_info_t config_info;
-    PowerRune_Common_config_info_t config_common_info;
+    uint8_t address = 0xFF;
+    uint8_t data_len = sizeof(CONFIG_EVENT_DATA);
+    PowerRune_Common_config_info_t config_info;
+    PowerRune_Armour_config_info_t config_armour_info;
+    PowerRune_Motor_config_info_t config_motor_info;
+    PowerRune_Rlogo_config_info_t config_rlogo_info;
 };
-struct CONFIG_RLOGO_EVENT_DATA
+struct CONFIG_COMPLETE_EVENT_DATA
 {
-    PowerRune_Rlogo_config_info_t config_info;
-    PowerRune_Common_config_info_t config_common_info;
+    uint8_t address = 0xFF;
+    uint8_t data_len = sizeof(CONFIG_COMPLETE_EVENT_DATA);
+    esp_err_t status;
 };
-struct CONFIG_MOTOR_EVENT_DATA
+struct RESPONSE_EVENT_DATA
 {
-    PowerRune_Motor_config_info_t config_info;
-    PowerRune_Common_config_info_t config_common_info;
+    uint8_t address;
+    uint8_t data_len = sizeof(RESPONSE_EVENT_DATA);
 };
+// Beacon Timeout不需要数据
 
 // Armour事件
 enum
@@ -70,7 +90,48 @@ enum
     PRA_START_EVENT,
     PRA_HIT_EVENT,
     PRA_COMPLETE_EVENT,
-    PRA_COMPLETE_EVENT_EVENT,
+    PRA_PING_EVENT,
+};
+
+enum RUNE_MODE
+{
+    PRA_RUNE_BIG_MODE,
+    PRA_RUNE_SMALL_MODE,
+};
+
+enum RUNE_COLOR
+{
+    PR_RED,
+    PR_BLUE,
+};
+
+struct PRA_PING_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PRA_PING_EVENT_DATA);
+    uint8_t mac[ESP_NOW_ETH_ALEN];
+    PowerRune_Armour_config_info_t config_info;
+};
+
+struct PRA_START_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PRA_START_EVENT_DATA);
+    uint8_t mode = PRA_RUNE_BIG_MODE;
+    uint8_t color = PR_RED;
+};
+
+struct PRA_HIT_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PRA_HIT_EVENT_DATA);
+    uint8_t score = 0;
+};
+
+struct PRA_COMPLETE_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PRA_COMPLETE_EVENT_DATA);
 };
 
 // 电机事件
@@ -83,4 +144,67 @@ enum
     PRM_SPEED_STABLE_EVENT,
     PRM_STOP_EVENT,
     PRM_DISCONNECT_EVENT,
+    PRM_PING_EVENT,
 };
+
+enum PRM_DIRECTION
+{
+    PRM_DIRECTION_CLOCKWISE,     // 顺时针
+    PRM_DIRECTION_ANTICLOCKWISE, // 逆时针
+};
+
+struct PRM_PING_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PRM_PING_EVENT_DATA);
+    uint8_t mac[ESP_NOW_ETH_ALEN];
+    PowerRune_Motor_config_info_t config_info;
+};
+
+struct PRM_UNLOCK_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PRM_UNLOCK_EVENT_DATA);
+};
+
+struct PRM_UNLOCK_DONE_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PRM_UNLOCK_DONE_EVENT_DATA);
+    esp_err_t status;
+};
+
+struct PRM_START_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PRM_START_EVENT_DATA);
+    uint8_t mode = PRA_RUNE_BIG_MODE;
+    uint8_t clockwise = PRM_DIRECTION_CLOCKWISE;
+};
+
+struct PRM_START_DONE_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PRM_START_DONE_EVENT_DATA);
+    esp_err_t status;
+};
+
+struct PRM_SPEED_STABLE_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PRM_SPEED_STABLE_EVENT_DATA);
+};
+
+struct PRM_STOP_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PRM_STOP_EVENT_DATA);
+};
+
+struct PRM_DISCONNECT_EVENT_DATA
+{
+    uint8_t address;
+    uint8_t data_len = sizeof(PRM_DISCONNECT_EVENT_DATA);
+};
+
+#pragma pack()

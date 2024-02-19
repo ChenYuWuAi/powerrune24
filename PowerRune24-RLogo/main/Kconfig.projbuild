@@ -10,7 +10,7 @@ menu "PowerRune Project Configuration"
 
     config DEFAULT_UPDATE_URL
         string "PowerRune Update Server Address"
-        default "http://gitee.com/chenyuwuai/pr-ota-bin/raw/master/"
+        default "https://gitlab.seu.edu.cn/ch/pr-ota-bin/-/raw/main/"
         help
             The server address where the PowerRune update files are stored
 
@@ -19,8 +19,12 @@ menu "PowerRune Project Configuration"
         default 20000
 
     config ESPNOW_TIMEOUT
-        int "Time limit(MS) for ESPNOW task"
-        default 3000
+        int "Time limit(MS) for ESPNOW operations"
+        default 300
+
+    config BEACON_TIMEOUT
+        int "Time limit(MS) for Beacon detection"
+        default 15000
 
     config ESPNOW_PMK
         string "ESPNOW primary master key"
@@ -49,17 +53,11 @@ menu "PowerRune Project Configuration"
 
     config DEFAULT_UPDATE_SSID
         string "PowerRune Update Default WiFi Name"
-        default "SEU-WLAN"
+        default "3SE-120"
 
     config DEFAULT_UPDATE_PWD
         string "PowerRune Update Default WiFi Password"
-        default ""
-
-    config DEFAULT_UPDATE_TIME_OUT
-        int "OTA Timeout"
-        default 5000
-        help
-            Maximum time for reception
+        default "roboclub"
 
     config PR_NVS_NAMESPACE
         string "NVS Namespace for PowerRune"

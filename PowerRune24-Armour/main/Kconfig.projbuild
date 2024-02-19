@@ -10,31 +10,54 @@ menu "PowerRune Project Configuration"
 
     config DEFAULT_UPDATE_URL
         string "PowerRune Update Server Address"
-        default "http://10.203.221.22/pr_ota_bin/"
+        default "https://gitlab.seu.edu.cn/ch/pr-ota-bin/-/raw/main/"
         help
             The server address where the PowerRune update files are stored
 
     config OTA_TIMEOUT
-        int "Time limit(MS) for OTA HTTP Client"
+        int "Time limit(MS) for OTA task"
         default 20000
 
     config ESPNOW_TIMEOUT
-        int "Time limit(MS) for ESPNOW task"
-        default 3000
+        int "Time limit(MS) for ESPNOW operations"
+        default 300
+
+    config BEACON_TIMEOUT
+        int "Time limit(MS) for Beacon detection"
+        default 15000
+
+    config ESPNOW_PMK
+        string "ESPNOW primary master key"
+        default "z9BJ2ULDYA7vCxoM"
+        help
+            ESPNOW primary master for the example to use. The length of ESPNOW primary master must be 16 bytes.
+
+    config ESPNOW_LMK
+        string "ESPNOW local master key"
+        default "rv29b0wTgFb8Zozi"
+        help
+            ESPNOW local master for the example to use. The length of ESPNOW local master must be 16 bytes.
+
+    config ESPNOW_CHANNEL
+        int "Channel"
+        default 1
+        range 0 14
+        help
+            The channel on which sending and receiving ESPNOW data.
 
     config DEFAULT_UPDATE_FILE
         string "PowerRune Update Filename"
-        default "PowerRune_%i_latest.bin"
+        default "%sPowerRune24-%i_latest.bin"
         help
             %i represents the driver board type (0:ARMOUR, 1:RLOGO, 2:MOTORCTL)
 
     config DEFAULT_UPDATE_SSID
         string "PowerRune Update Default WiFi Name"
-        default "SEU-WLAN"
+        default "3SE-120"
 
     config DEFAULT_UPDATE_PWD
         string "PowerRune Update Default WiFi Password"
-        default ""
+        default "roboclub"
 
     config PR_NVS_NAMESPACE
         string "NVS Namespace for PowerRune"

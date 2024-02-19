@@ -11,13 +11,15 @@ set(VERSION_MINOR  0)    # 二级版本号
 set(VERSION_LEVEL3 1)    # 三级版本号
 
 # Debug模式（目标：上一个版本号+编译时间）
-if(${COMPILE_MODE} MATCHES ${DEBUG_VERSION})   
+if(${COMPILE_MODE} MATCHES ${DEBUG_VERSION})
     message(STATUS "Compile mode: ${COMPILE_MODE}")
     set(PROJECT_VER v${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_LEVEL3}-${COMPILE_TIME}-debug)
+    message(STATUS "Version: ${PROJECT_VER}")
 # Release模式（目标：版本号）
 else()
     message(STATUS "Compile mode: ${COMPILE_MODE}")
     set(PROJECT_VER v${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_LEVEL3})
+    message(STATUS "Version: ${PROJECT_VER}")
 endif()
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)

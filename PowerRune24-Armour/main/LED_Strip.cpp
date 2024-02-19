@@ -1,94 +1,17 @@
 /**
- * @file LED_Strip.h
+ * @file LED_Strip.cpp
  * @brief LED_Strip驱动
- * @version 0.1
- * @date 2024-01-24
- * @author CH
- * @note 改编自官方示例
- */
-#pragma once
-#ifdef CONFIG_IDF_TARGET_ESP32S3
-#define ENABLE_DMA // S3库需要使能该宏定义，C3库不需要
-#endif
-#include "esp_log.h"
-#include "esp_err.h"
-#include "esp_check.h"
-
-#include "driver/gpio.h"
-#include "driver/rmt_tx.h"
-#include "driver/rmt_encoder.h"
-
-// FreeRTOS Functions
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-
-#include <string.h>
-
+ * @version 1.1
+ * @date 2024-02-18
+*/
+#include "LED_Strip.h"
 // 调试标签
 const char *TAG_LED_STRIP = "LED_Strip";
-
-struct LED_color_info_t
-{
-    uint8_t green;
-    uint8_t red;
-    uint8_t blue;
-};
-
-class LED_Strip
-{
-private:
-    static rmt_channel_handle_t LED_tx_channel_handle;
-    static uint8_t LED_Strip_num;
-    static rmt_transmit_config_t tx_config;
-    static rmt_encoder_handle_t led_encoder;
-    typedef struct
-    {
-        rmt_encoder_t base;
-        rmt_encoder_t *bytes_encoder;
-        rmt_encoder_t *copy_encoder;
-        int state;
-        rmt_symbol_word_t reset_code;
-    } rmt_led_strip_encoder_t;
-
-    static size_t rmt_encode_led_strip(rmt_encoder_t *encoder, rmt_channel_handle_t channel, const void *primary_data, size_t data_size, rmt_encode_state_t *ret_state);
-    static esp_err_t rmt_del_led_strip_encoder(rmt_encoder_t *encoder);
-    static esp_err_t rmt_led_strip_encoder_reset(rmt_encoder_t *encoder);
-    static esp_err_t rmt_new_led_strip_encoder(rmt_encoder_handle_t *ret_encoder);
-
-protected:
-    LED_color_info_t *LED_Strip_color;
-    uint16_t LED_Strip_length;
-    uint8_t LED_Brightness;
-
-public:
-    LED_Strip(gpio_num_t io_num = GPIO_NUM_11, uint16_t LED_Strip_length = 1);
-    LED_color_info_t &operator[](uint16_t index);
-    esp_err_t set_color(uint8_t red, uint8_t green, uint8_t blue);
-    esp_err_t set_color(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness);
-    esp_err_t set_color(uint16_t index, uint8_t red, uint8_t green, uint8_t blue);
-    esp_err_t set_color(uint16_t index, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness);
-    esp_err_t refresh(uint8_t block = 1);
-    esp_err_t clear_pixels();
-    esp_err_t set_brightness_filter(uint8_t brightness);
-    ~LED_Strip();
-};
-
 rmt_channel_handle_t LED_Strip::LED_tx_channel_handle = NULL;
 uint8_t LED_Strip::LED_Strip_num = 0;
 rmt_transmit_config_t LED_Strip::tx_config;
 rmt_encoder_handle_t LED_Strip::led_encoder;
 
-/**
- * @brief Encodes and sends data to the LED strip using RMT encoding.
- *
- * @param encoder The RMT encoder.
- * @param channel The RMT channel handle.
- * @param primary_data The primary data to be encoded and sent.
- * @param data_size The size of the primary data.
- * @param ret_state The state of the encoding process.
- *
- * @return The number of encoded symbols.
- */
 size_t LED_Strip::rmt_encode_led_strip(rmt_encoder_t *encoder, rmt_channel_handle_t channel, const void *primary_data, size_t data_size, rmt_encode_state_t *ret_state)
 {
     rmt_led_strip_encoder_t *led_encoder = __containerof(encoder, rmt_led_strip_encoder_t, base);
@@ -130,9 +53,6 @@ out:
     return encoded_symbols;
 }
 
-/**
- * @brief Deletes the LED strip encoder.
- */
 esp_err_t LED_Strip::rmt_del_led_strip_encoder(rmt_encoder_t *encoder)
 {
     rmt_led_strip_encoder_t *led_encoder = __containerof(encoder, rmt_led_strip_encoder_t, base);
@@ -141,20 +61,7 @@ esp_err_t LED_Strip::rmt_del_led_strip_encoder(rmt_encoder_t *encoder)
     free(led_encoder);
     return ESP_OK;
 }
-/**
- * @brief Resets the LED strip encoder.
- */
-esp_err_t LED_Strip::rmt_led_strip_encoder_reset(rmt_encoder_t *encoder)
-{
-    rmt_led_strip_encoder_t *led_encoder = __containerof(encoder, rmt_led_strip_encoder_t, base);
-    rmt_encoder_reset(led_encoder->bytes_encoder);
-    rmt_encoder_reset(led_encoder->copy_encoder);
-    led_encoder->state = RMT_ENCODING_RESET;
-    return ESP_OK;
-}
-/**
- * @brief Creates a new LED strip encoder.
- */
+
 esp_err_t LED_Strip::rmt_new_led_strip_encoder(rmt_encoder_handle_t *ret_encoder)
 {
     esp_err_t ret = ESP_OK;
@@ -208,13 +115,17 @@ err:
     }
     return ret;
 }
-/**
- * @brief LED_Strip驱动
- * @param io_num LED_Strip的IO口
- * @param LED_Strip_length LED_Strip的长度
- */
 
-LED_Strip::LED_Strip(gpio_num_t io_num, uint16_t LED_Strip_length)
+esp_err_t LED_Strip::rmt_led_strip_encoder_reset(rmt_encoder_t *encoder)
+{
+    rmt_led_strip_encoder_t *led_encoder = __containerof(encoder, rmt_led_strip_encoder_t, base);
+    rmt_encoder_reset(led_encoder->bytes_encoder);
+    rmt_encoder_reset(led_encoder->copy_encoder);
+    led_encoder->state = RMT_ENCODING_RESET;
+    return ESP_OK;
+}
+
+LED_Strip::LED_Strip(const gpio_num_t io_num, uint16_t LED_Strip_length)
 {
     this->LED_Strip_length = LED_Strip_length;
     // malloc
@@ -255,14 +166,9 @@ LED_Strip::LED_Strip(gpio_num_t io_num, uint16_t LED_Strip_length)
         ESP_ERROR_CHECK(rmt_enable(LED_tx_channel_handle));
     }
     LED_Strip_num++;
+    this->refresh(0);
 }
-/**
- * @brief 获取LED_Strip的颜色
- * @param index LED_Strip的索引
- * @return LED_Strip的颜色
- * @note 该函数会自动处理索引越界的情况
- * @note 该函数返回的是引用，可以直接修改LED_Strip的颜色(GRB顺序)
- */
+
 LED_color_info_t &LED_Strip::operator[](uint16_t index)
 {
     if (index >= this->LED_Strip_length)
@@ -271,15 +177,7 @@ LED_color_info_t &LED_Strip::operator[](uint16_t index)
     }
     return this->LED_Strip_color[index];
 }
-/**
- * @brief 设置LED_Strip的颜色
- * @param red 红色通道
- * @param green 绿色通道
- * @param blue 蓝色通道
- * @return 设置结果
- * @note 该函数会设置所有LED_Strip的颜色
- * @note 该函数不会设置亮度
- */
+
 esp_err_t LED_Strip::set_color(uint8_t red, uint8_t green, uint8_t blue)
 {
     for (uint16_t i = 0; i < this->LED_Strip_length; i++)
@@ -291,16 +189,6 @@ esp_err_t LED_Strip::set_color(uint8_t red, uint8_t green, uint8_t blue)
     return ESP_OK;
 }
 
-/**
- * @brief 设置LED_Strip的颜色
- * @param red 红色通道
- * @param green 绿色通道
- * @param blue 蓝色通道
- * @param brightness 亮度
- * @return 设置结果
- * @note 该函数会设置所有LED_Strip的颜色
- * @note 该函数会设置亮度(0-255)
- */
 esp_err_t LED_Strip::set_color(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness)
 {
     for (uint16_t i = 0; i < this->LED_Strip_length; i++)
@@ -311,18 +199,8 @@ esp_err_t LED_Strip::set_color(uint8_t red, uint8_t green, uint8_t blue, uint8_t
     }
     return ESP_OK;
 }
-/**
- * @brief 设置LED_Strip的颜色
- * @param index LED_Strip的索引
- * @param red 红色通道
- * @param green 绿色通道
- * @param blue 蓝色通道
- * @return 设置结果
- * @note 该函数会设置LED_Strip的颜色
- * @note 该函数不会设置亮度
- * @note 该函数会自动处理索引越界的情况
- */
-esp_err_t LED_Strip::set_color(uint16_t index, uint8_t red, uint8_t green, uint8_t blue)
+
+esp_err_t LED_Strip::set_color_index(uint16_t index, uint8_t red, uint8_t green, uint8_t blue)
 {
     if (index >= this->LED_Strip_length)
     {
@@ -334,19 +212,7 @@ esp_err_t LED_Strip::set_color(uint16_t index, uint8_t red, uint8_t green, uint8
     return ESP_OK;
 }
 
-/**
- * @brief 设置LED_Strip的颜色
- * @param index LED_Strip的索引
- * @param red 红色通道
- * @param green 绿色通道
- * @param blue 蓝色通道
- * @param brightness 亮度
- * @return 设置结果
- * @note 该函数会设置LED_Strip的颜色
- * @note 该函数会设置亮度(0-255)
- * @note 该函数会自动处理索引越界的情况
- */
-esp_err_t LED_Strip::set_color(uint16_t index, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness)
+esp_err_t LED_Strip::set_color_index(uint16_t index, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness)
 {
     if (index >= this->LED_Strip_length)
     {
@@ -357,12 +223,7 @@ esp_err_t LED_Strip::set_color(uint16_t index, uint8_t red, uint8_t green, uint8
     this->LED_Strip_color[index].blue = blue * brightness / 255.0;
     return ESP_OK;
 }
-/**
- * @brief 刷新LED_Strip
- * @param block 是否阻塞
- * @return 刷新结果
- * @note 该函数会刷新所有LED_Strip的颜色
- */
+
 esp_err_t LED_Strip::refresh(uint8_t block) // 默认阻塞
 {
     rmt_encoder_reset(led_encoder);
@@ -371,12 +232,7 @@ esp_err_t LED_Strip::refresh(uint8_t block) // 默认阻塞
         ESP_ERROR_CHECK(rmt_tx_wait_all_done(LED_tx_channel_handle, portMAX_DELAY));
     return ESP_OK;
 }
-/**
- * @brief 清空LED_Strip
- * @return 清空结果
- * @note 该函数会清空所有LED_Strip的颜色
- * @note 该函数不会刷新LED_Strip
- */
+
 esp_err_t LED_Strip::clear_pixels()
 {
     for (uint16_t i = 0; i < this->LED_Strip_length; i++)
@@ -387,14 +243,12 @@ esp_err_t LED_Strip::clear_pixels()
     }
     return ESP_OK;
 }
+
 /**
- * @brief 设置LED_Strip的亮度
- * @param brightness 亮度
- * @return 设置结果
- * @note 该函数会设置所有LED_Strip的亮度
- * @note 该函数适合单次调用，多次调用会导致亮度损失
+ * @brief 遍历所有像素点，将颜色值按比例缩小
+ * @param brightness 亮度值，0-255
  */
-esp_err_t LED_Strip::set_brightness_filter(uint8_t brightness)
+esp_err_t LED_Strip::set_brightness_filter(uint8_t brightness) // 0-255
 {
     this->LED_Brightness = brightness;
     for (uint16_t i = 0; i < this->LED_Strip_length; i++)
@@ -408,9 +262,9 @@ esp_err_t LED_Strip::set_brightness_filter(uint8_t brightness)
 
 LED_Strip::~LED_Strip()
 {
+
     delete[] this->LED_Strip_color;
     LED_Strip_num--;
-
     if (LED_Strip_num == 0)
     {
         rmt_disable(LED_tx_channel_handle);

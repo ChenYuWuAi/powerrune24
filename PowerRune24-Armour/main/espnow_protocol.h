@@ -1,3 +1,10 @@
+/**
+ * @file espnow_protocol.h
+ * @brief ESP-NOW协议
+ * @version 0.1
+ * @date 2024-02-18
+ * @note 用于ESP-NOW通信
+*/
 #pragma once
 // ESP Common
 #include <stdlib.h>

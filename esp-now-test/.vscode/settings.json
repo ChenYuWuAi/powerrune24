@@ -3,5 +3,6 @@
   "files.associations": {
     "future": "c",
     "*.inc": "c"
-  }
+  },
+  "idf.adapterTargetName": "esp32c3"
 }

@@ -5,28 +5,25 @@
  * @date 2024-02-02
  * @note 本文件不会被编译到固件中，只用于测试Common里面的通用类型库。
  */
-#include <stdio.h>
-#include "esp_log.h"
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <esp_event.h>
-#include <LED_Strip.h>
-#include <LED.h>
-#include <DEMUX.h>
-#include <driver/gpio.h>
-#include <firmware.h>
+#include "main.h"
 
-const char *TAG = "Unit Test";
-extern Config *config;
-extern LED *led;
-extern esp_event_loop_handle_t pr_events_loop_handle;
+const char *TAG = "Main";
 
-// OTA测试代码
+/**
+ * @note beacon timeout处理函数
+ */
+void beacon_timeout(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
+{
+
+    // 开始空闲状态
+    esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, NULL, 0, portMAX_DELAY);
+    return;
+}
+
 extern "C" void app_main(void)
 {
-    // 在此编写单元测试代码
-    ESP_LOGI(TAG, "Unit Test Start");
-    led = new LED(GPIO_NUM_2);
+    // LED and LED Strip init
+    led = new LED(GPIO_NUM_48, 1, LED_MODE_ON, 1);
 
     // 启动事件循环
     esp_event_loop_args_t loop_args = {
@@ -34,19 +31,36 @@ extern "C" void app_main(void)
         .task_name = "pr_events_loop",
         .task_priority = 5,
         .task_stack_size = 4096,
-        .task_core_id = 1,
     };
     ESP_ERROR_CHECK(esp_event_loop_create(&loop_args, &pr_events_loop_handle));
 
     // Firmware init
     Firmware firmware;
 
-    ESP_LOGI(TAG, "Unit Test End");
+    // ESP-NOW init
+    espnow_protocol = new ESPNowProtocol(beacon_timeout);
 
-    while (1)
-    {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
+    ESP_LOGI(TAG, "ESP Now Start");
+    // ID设置完成，开启led blink
+    if (config->get_config_info_pt()->armour_id != 0xFF)
+        led->set_mode(LED_MODE_BLINK, config->get_config_info_pt()->armour_id);
+    else
+        led->set_mode(LED_MODE_BLINK, 0);
+
+    // Armour init
+    PowerRune_Armour armour;
+
+    // 注册大符通讯协议事件
+    // 发送事件
+    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, ESPNowProtocol::tx_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, OTA_BEGIN_EVENT, Firmware::global_pr_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, OTA_COMPLETE_EVENT, ESPNowProtocol::tx_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, CONFIG_COMPLETE_EVENT, ESPNowProtocol::tx_event_handler, NULL));
+
+    // Register beacon timeout event handlers.
+    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, BEACON_TIMEOUT_EVENT, beacon_timeout, NULL));
+
+    vTaskSuspend(NULL);
 }
 /* 大符Armour灯带库测试代码
 // 测试LED_Strip

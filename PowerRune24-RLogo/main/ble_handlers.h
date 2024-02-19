@@ -7,6 +7,8 @@
 #define _BLE_HANDLERS_H_
 #include "main.h"
 
+const char *TAG_BLE = "BLE";
+
 // event loop中的handle
 // Handler which executes when the ble started event gets executed by the loop.
 // spp服务
@@ -90,11 +92,11 @@ static void pid_write_handler(void *handler_args, esp_event_base_t base, int32_t
 {
 }
 
-static void armor_id_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
+static void armour_id_read_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
 }
 
-static void armor_id_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
+static void armour_id_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
 }
 
@@ -117,7 +119,7 @@ static void stop_write_handler(void *handler_args, esp_event_base_t base, int32_
 
 static void ota_write_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-    xTaskCreate((TaskFunction_t)ota_task, "ota_task", 4096, NULL, 10, NULL);
+    xTaskCreate((TaskFunction_t)ota_task, "ota_task", 8192, NULL, 10, NULL);
 }
 
 static uint8_t find_char_and_desr_index(uint16_t handle)
@@ -196,9 +198,9 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
 
         // 创建属性表
         esp_ble_gatts_create_attr_tab(spp_gatt_db, gatts_if, SPP_IDX_NB, SPP_SVC_INST_ID);
-        printf("注册spp属性表结束\n");
+        ESP_LOGD(TAG_BLE, "注册spp属性表结束\n");
         esp_ble_gatts_create_attr_tab(ops_gatt_db, gatts_if, OPS_IDX_NB, OPS_SVC_INST_ID);
-        printf("注册ops属性表结束\n");
+        ESP_LOGD(TAG_BLE, "注册ops属性表结束\n");
         break;
     case ESP_GATTS_READ_EVT:
     {
@@ -208,122 +210,122 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         {
         case URL_VAL:
             // URL_read事件
-            printf("URL_read事件\n");
+            ESP_LOGD(TAG_BLE, "URL_read事件\n");
             ESP_ERROR_CHECK(esp_event_post(URL_EVENTS, URL_EVENT_READ, NULL, 0, portMAX_DELAY));
-            printf("URL_read事件结束\n");
+            ESP_LOGD(TAG_BLE, "URL_read事件结束\n");
             break;
         case URL_CFG:
             // URL_cfg
-            printf("URL_cfg(read)\n");
+            ESP_LOGD(TAG_BLE, "URL_cfg(read)\n");
             break;
         case MAC_VAL:
             // MAC_read事件
-            printf("MAC_read事件\n");
+            ESP_LOGD(TAG_BLE, "MAC_read事件\n");
             ESP_ERROR_CHECK(esp_event_post(MAC_EVENTS, MAC_EVENT_READ, NULL, 0, portMAX_DELAY));
-            printf("MAC_read事件结束\n");
+            ESP_LOGD(TAG_BLE, "MAC_read事件结束\n");
             break;
         case MAC_CFG:
             // MAC_cfg
-            printf("MAC_cfg(read)\n");
+            ESP_LOGD(TAG_BLE, "MAC_cfg(read)\n");
             break;
         case SSID_VAL:
             // SSID_read事件
-            printf("SSID_read事件\n");
+            ESP_LOGD(TAG_BLE, "SSID_read事件\n");
             ESP_ERROR_CHECK(esp_event_post(SSID_EVENTS, SSID_EVENT_READ, NULL, 0, portMAX_DELAY));
-            printf("SSID_read事件结束\n");
+            ESP_LOGD(TAG_BLE, "SSID_read事件结束\n");
             break;
         case SSID_CFG:
             // SSID_cfg
-            printf("SSID_cfg(read)\n");
+            ESP_LOGD(TAG_BLE, "SSID_cfg(read)\n");
             break;
         case Wifi_VAL:
             // Wifi_read事件
-            printf("Wifi_read事件\n");
+            ESP_LOGD(TAG_BLE, "Wifi_read事件\n");
             ESP_ERROR_CHECK(esp_event_post(Wifi_EVENTS, Wifi_EVENT_READ, NULL, 0, portMAX_DELAY));
-            printf("Wifi_read事件结束\n");
+            ESP_LOGD(TAG_BLE, "Wifi_read事件结束\n");
             break;
         case Wifi_CFG:
             // Wifi_cfg
-            printf("Wifi_cfg(read)\n");
+            ESP_LOGD(TAG_BLE, "Wifi_cfg(read)\n");
             break;
         case AOTA_VAL:
             // AOTA_read事件
-            printf("AOTA_read事件\n");
+            ESP_LOGD(TAG_BLE, "AOTA_read事件\n");
             ESP_ERROR_CHECK(esp_event_post(AOTA_EVENTS, AOTA_EVENT_READ, NULL, 0, portMAX_DELAY));
-            printf("AOTA_read事件结束\n");
+            ESP_LOGD(TAG_BLE, "AOTA_read事件结束\n");
             break;
         case AOTA_CFG:
             // AOTA_cfg
-            printf("AOTA_cfg(read)\n");
+            ESP_LOGD(TAG_BLE, "AOTA_cfg(read)\n");
             break;
         case LIT_VAL:
             // LIT_read事件
-            printf("LIT_read事件\n");
+            ESP_LOGD(TAG_BLE, "LIT_read事件\n");
             ESP_ERROR_CHECK(esp_event_post(LIT_EVENTS, LIT_EVENT_READ, NULL, 0, portMAX_DELAY));
-            printf("LIT_read事件结束\n");
+            ESP_LOGD(TAG_BLE, "LIT_read事件结束\n");
             break;
         case LIT_CFG:
             // LIT_cfg
-            printf("LIT_cfg(read)\n");
+            ESP_LOGD(TAG_BLE, "LIT_cfg(read)\n");
             break;
         case STRIP_LIT_VAL:
             // STRIP_LIT_read事件
-            printf("STRIP_LIT_read事件\n");
+            ESP_LOGD(TAG_BLE, "STRIP_LIT_read事件\n");
             ESP_ERROR_CHECK(esp_event_post(STRIP_LIT_EVENTS, STRIP_LIT_EVENT_READ, NULL, 0, portMAX_DELAY));
-            printf("STRIP_LIT_read事件结束\n");
+            ESP_LOGD(TAG_BLE, "STRIP_LIT_read事件结束\n");
             break;
         case STRIP_LIT_CFG:
             // STRIP_LIT_cfg
-            printf("STRIP_LIT_cfg(read)\n");
+            ESP_LOGD(TAG_BLE, "STRIP_LIT_cfg(read)\n");
             break;
         case R_LIT_VAL:
             // R_LIT_read事件
-            printf("R_LIT_read事件\n");
+            ESP_LOGD(TAG_BLE, "R_LIT_read事件\n");
             ESP_ERROR_CHECK(esp_event_post(R_LIT_EVENTS, R_LIT_EVENT_READ, NULL, 0, portMAX_DELAY));
-            printf("R_LIT_read事件结束\n");
+            ESP_LOGD(TAG_BLE, "R_LIT_read事件结束\n");
             break;
         case R_LIT_CFG:
             // R_LIT_cfg
-            printf("R_LIT_cfg(read)\n");
+            ESP_LOGD(TAG_BLE, "R_LIT_cfg(read)\n");
             break;
         case MATRIX_LIT_VAL:
             // MATRIX_LIT_read事件
-            printf("MATRIX_LIT_read事件\n");
+            ESP_LOGD(TAG_BLE, "MATRIX_LIT_read事件\n");
             ESP_ERROR_CHECK(esp_event_post(MATRIX_LIT_EVENTS, MATRIX_LIT_EVENT_READ, NULL, 0, portMAX_DELAY));
-            printf("MATRIX_LIT_read事件结束\n");
+            ESP_LOGD(TAG_BLE, "MATRIX_LIT_read事件结束\n");
             break;
         case MATRIX_LIT_CFG:
             // MATRIX_LIT_cfg
-            printf("MATRIX_LIT_cfg(read)\n");
+            ESP_LOGD(TAG_BLE, "MATRIX_LIT_cfg(read)\n");
             break;
         case PID_VAL:
             // PID_read事件
-            printf("PID_read事件\n");
+            ESP_LOGD(TAG_BLE, "PID_read事件\n");
             ESP_ERROR_CHECK(esp_event_post(PID_EVENTS, PID_EVENT_READ, NULL, 0, portMAX_DELAY));
-            printf("PID_read事件结束\n");
+            ESP_LOGD(TAG_BLE, "PID_read事件结束\n");
             break;
         case PID_CFG:
             // PID_cfg
-            printf("PID_cfg(read)\n");
+            ESP_LOGD(TAG_BLE, "PID_cfg(read)\n");
             break;
-        case ARMOR_ID_VAL:
-            // ARMOR_ID_read事件
-            printf("ARMOR_ID_read事件\n");
-            ESP_ERROR_CHECK(esp_event_post(ARMOR_ID_EVENTS, ARMOR_ID_EVENT_READ, NULL, 0, portMAX_DELAY));
-            printf("ARMOR_ID_read事件结束\n");
+        case ARMOUR_ID_VAL:
+            // ARMOUR_ID_read事件
+            ESP_LOGD(TAG_BLE, "ARMOUR_ID_read事件\n");
+            ESP_ERROR_CHECK(esp_event_post(ARMOUR_ID_EVENTS, ARMOUR_ID_EVENT_READ, NULL, 0, portMAX_DELAY));
+            ESP_LOGD(TAG_BLE, "ARMOUR_ID_read事件结束\n");
             break;
-        case ARMOR_ID_CFG:
-            // ARMOR_ID_cfg
-            printf("ARMOR_ID_cfg(read)\n");
+        case ARMOUR_ID_CFG:
+            // ARMOUR_ID_cfg
+            ESP_LOGD(TAG_BLE, "ARMOUR_ID_cfg(read)\n");
             break;
         case GPA_VAL + SPP_IDX_NB:
             // GPA_read事件
-            printf("GPA_read事件\n");
+            ESP_LOGD(TAG_BLE, "GPA_read事件\n");
             ESP_ERROR_CHECK(esp_event_post(GPA_EVENTS, GPA_EVENT_READ, NULL, 0, portMAX_DELAY));
-            printf("GPA_read事件结束\n");
+            ESP_LOGD(TAG_BLE, "GPA_read事件结束\n");
             break;
         default:
-            printf("未知read事件\n");
+            ESP_LOGD(TAG_BLE, "未知read事件\n");
         }
         break;
     }
@@ -331,148 +333,148 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
     {
         // write事件
         res = find_char_and_desr_index(p_data->write.handle);
-        printf("write事件  pdata handle: %d\n", res);
+        ESP_LOGD(TAG_BLE, "write事件  pdata handle: %d\n", res);
         if (p_data->write.is_prep == false)
         {
             switch (res)
             {
             case URL_VAL:
                 // URL_write事件
-                printf("URL_write事件\n");
+                ESP_LOGD(TAG_BLE, "URL_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
             case URL_CFG:
                 // URL_cfg
-                printf("URL_cfg(write)\n");
+                ESP_LOGD(TAG_BLE, "URL_cfg(write)\n");
                 break;
             case MAC_VAL:
                 // MAC_write事件
-                printf("MAC_write事件\n");
+                ESP_LOGD(TAG_BLE, "MAC_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
             case MAC_CFG:
                 // MAC_cfg
-                printf("MAC_cfg(write)\n");
+                ESP_LOGD(TAG_BLE, "MAC_cfg(write)\n");
                 break;
             case SSID_VAL:
                 // SSID_write事件
-                printf("SSID_write事件\n");
+                ESP_LOGD(TAG_BLE, "SSID_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
             case SSID_CFG:
                 // SSID_cfg
-                printf("SSID_cfg(write)\n");
+                ESP_LOGD(TAG_BLE, "SSID_cfg(write)\n");
                 break;
             case Wifi_VAL:
                 // Wifi_write事件
-                printf("Wifi_write事件\n");
+                ESP_LOGD(TAG_BLE, "Wifi_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
             case Wifi_CFG:
                 // Wifi_cfg
-                printf("Wifi_cfg(write)\n");
+                ESP_LOGD(TAG_BLE, "Wifi_cfg(write)\n");
                 break;
             case AOTA_VAL:
                 // AOTA_write事件
-                printf("AOTA_write事件\n");
+                ESP_LOGD(TAG_BLE, "AOTA_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
             case AOTA_CFG:
                 // AOTA_cfg
-                printf("AOTA_cfg(write)\n");
+                ESP_LOGD(TAG_BLE, "AOTA_cfg(write)\n");
                 break;
             case LIT_VAL:
                 // LIT_write事件
-                printf("LIT_write事件\n");
+                ESP_LOGD(TAG_BLE, "LIT_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
             case LIT_CFG:
                 // LIT_cfg
-                printf("LIT_cfg(write)\n");
+                ESP_LOGD(TAG_BLE, "LIT_cfg(write)\n");
                 break;
             case STRIP_LIT_VAL:
                 // STRIP_LIT_write事件
-                printf("STRIP_LIT_write事件\n");
+                ESP_LOGD(TAG_BLE, "STRIP_LIT_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
             case STRIP_LIT_CFG:
                 // STRIP_LIT_cfg
-                printf("STRIP_LIT_cfg(write)\n");
+                ESP_LOGD(TAG_BLE, "STRIP_LIT_cfg(write)\n");
                 break;
             case R_LIT_VAL:
                 // R_LIT_write事件
-                printf("R_LIT_write事件\n");
+                ESP_LOGD(TAG_BLE, "R_LIT_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
             case R_LIT_CFG:
                 // R_LIT_cfg
-                printf("R_LIT_cfg(write)\n");
+                ESP_LOGD(TAG_BLE, "R_LIT_cfg(write)\n");
                 break;
             case MATRIX_LIT_VAL:
                 // MATRIX_LIT_write事件
-                printf("MATRIX_LIT_write事件\n");
+                ESP_LOGD(TAG_BLE, "MATRIX_LIT_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
             case MATRIX_LIT_CFG:
                 // MATRIX_LIT_cfg
-                printf("MATRIX_LIT_cfg(write)\n");
+                ESP_LOGD(TAG_BLE, "MATRIX_LIT_cfg(write)\n");
                 break;
             case PID_VAL:
                 // PID_write事件
-                printf("PID_write事件\n");
+                ESP_LOGD(TAG_BLE, "PID_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
             case PID_CFG:
                 // PID_cfg
-                printf("PID_cfg(write)\n");
+                ESP_LOGD(TAG_BLE, "PID_cfg(write)\n");
                 break;
-            case ARMOR_ID_VAL:
-                // ARMOR_ID_write事件
-                printf("ARMOR_ID_write事件\n");
+            case ARMOUR_ID_VAL:
+                // ARMOUR_ID_write事件
+                ESP_LOGD(TAG_BLE, "ARMOUR_ID_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
-            case ARMOR_ID_CFG:
-                // ARMOR_ID_cfg
-                printf("ARMOR_ID_cfg(write)\n");
+            case ARMOUR_ID_CFG:
+                // ARMOUR_ID_cfg
+                ESP_LOGD(TAG_BLE, "ARMOUR_ID_cfg(write)\n");
                 break;
             case RUN_VAL + SPP_IDX_NB:
                 // RUN_write事件
-                printf("RUN_write事件\n");
+                ESP_LOGD(TAG_BLE, "RUN_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
             case RUN_CFG + SPP_IDX_NB:
                 // RUN_cfg
-                printf("RUN_cfg(write)\n");
+                ESP_LOGD(TAG_BLE, "RUN_cfg(write)\n");
                 break;
             case UNLK_VAL + SPP_IDX_NB:
                 // UNLK_write事件
-                printf("UNLK_write事件\n");
+                ESP_LOGD(TAG_BLE, "UNLK_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
             case UNLK_CFG + SPP_IDX_NB:
                 // UNLK_cfg
-                printf("UNLK_cfg(write)\n");
+                ESP_LOGD(TAG_BLE, "UNLK_cfg(write)\n");
                 break;
             case STOP_VAL + SPP_IDX_NB:
                 // STOP_write事件
-                printf("STOP_write事件\n");
+                ESP_LOGD(TAG_BLE, "STOP_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
             case STOP_CFG + SPP_IDX_NB:
                 // STOP_cfg
-                printf("STOP_cfg(write)\n");
+                ESP_LOGD(TAG_BLE, "STOP_cfg(write)\n");
                 break;
             case OTA_VAL + SPP_IDX_NB:
                 // OTA_write事件
-                printf("OTA_write事件\n");
+                ESP_LOGD(TAG_BLE, "OTA_write事件\n");
                 esp_ble_gatts_set_attr_value(p_data->write.handle, p_data->write.len, p_data->write.value);
                 break;
             case OTA_CFG + SPP_IDX_NB:
                 // OTA_cfg
-                printf("OTA_cfg(write)\n");
+                ESP_LOGD(TAG_BLE, "OTA_cfg(write)\n");
                 break;
             default:
-                printf("未知write事件\n");
+                ESP_LOGD(TAG_BLE, "未知write事件\n");
             }
         }
         else if ((p_data->write.is_prep == true))
@@ -487,7 +489,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         break;
     case ESP_GATTS_CONF_EVT:
         // 经过esp_ble_gatts_send_indicate会到此处
-        printf("经过send_indicate后\n");
+        ESP_LOGD(TAG_BLE, "经过send_indicate后\n");
         break;
     case ESP_GATTS_UNREG_EVT:
         break;
@@ -530,14 +532,14 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             memcpy(spp_handle_table, param->add_attr_tab.handles, sizeof(spp_handle_table));
             esp_ble_gatts_start_service(spp_handle_table[SPP_IDX_SVC]);
 
-            printf("spp_handle_table[0] = %d\n", spp_handle_table[0]);
+            ESP_LOGD(TAG_BLE, "spp_handle_table[0] = %d\n", spp_handle_table[0]);
         }
         else if (param->add_attr_tab.svc_inst_id == 1)
         {
             memcpy(ops_handle_table, param->add_attr_tab.handles, sizeof(ops_handle_table));
             esp_ble_gatts_start_service(ops_handle_table[OPS_IDX_SVC]);
 
-            printf("ops_handle_table[0] = %d\n", ops_handle_table[0]);
+            ESP_LOGD(TAG_BLE, "ops_handle_table[0] = %d\n", ops_handle_table[0]);
         }
         break;
     }
@@ -587,9 +589,9 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             // PID
             esp_event_post(PID_EVENTS, PID_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
-        case ARMOR_ID_VAL:
-            // ARMOR_ID
-            esp_event_post(ARMOR_ID_EVENTS, ARMOR_ID_EVENT_WRITE, NULL, 0, portMAX_DELAY);
+        case ARMOUR_ID_VAL:
+            // ARMOUR_ID
+            esp_event_post(ARMOUR_ID_EVENTS, ARMOUR_ID_EVENT_WRITE, NULL, 0, portMAX_DELAY);
             break;
         case RUN_VAL + SPP_IDX_NB:
             // RUN
@@ -618,7 +620,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
 // GATTS的回调函数
 void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
-    printf("\nGATTS事件回调\n\n");
+    ESP_LOGD(TAG_BLE, "\nGATTS事件回调\n\n");
     ESP_LOGI(GATTS_TABLE_TAG, "EVT %d, gatts if %d\n", event, gatts_if);
 
     /* If event is register event, store the gatts_if for each profile */
@@ -649,19 +651,19 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
                 // 执行注册的APP的回调函数
                 if (spp_profile_tab[idx].gatts_cb)
                 {
-                    printf("去往profile\n");
+                    ESP_LOGD(TAG_BLE, "去往profile\n");
                     spp_profile_tab[idx].gatts_cb(event, gatts_if, param);
                 }
             }
         }
     } while (0);
-    printf("从profile回来\n");
+    ESP_LOGD(TAG_BLE, "从profile回来\n");
 }
 
 // GAP的回调函数
 void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
-    printf("GAP的回调函数\n");
+    ESP_LOGD(TAG_BLE, "GAP的回调函数\n");
     esp_err_t err;
     ESP_LOGE(GATTS_TABLE_TAG, "GAP_EVT, event %d\n", event);
 
