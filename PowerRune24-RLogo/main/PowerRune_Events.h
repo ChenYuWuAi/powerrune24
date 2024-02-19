@@ -65,7 +65,7 @@ struct CONFIG_EVENT_DATA // 比较浪费，但是省事
 {
     uint8_t address = 0xFF;
     uint8_t data_len = sizeof(CONFIG_EVENT_DATA);
-    PowerRune_Common_config_info_t config_info;
+    PowerRune_Common_config_info_t config_common_info;
     PowerRune_Armour_config_info_t config_armour_info;
     PowerRune_Motor_config_info_t config_motor_info;
     PowerRune_Rlogo_config_info_t config_rlogo_info;

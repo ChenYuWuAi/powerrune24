@@ -1,8 +1,8 @@
 /**
  * @file firmware.cpp
  * @brief 固件类
- * @version 0.1
- * @date 2024-02-18
+ * @version 0.2
+ * @date 2024-02-19
  */
 #include "firmware.h"
 
@@ -136,7 +136,7 @@ esp_err_t Config::save()
 #if CONFIG_POWERRUNE_TYPE == 0 // ARMOUR
     size_t required_size = sizeof(PowerRune_Armour_config_info_t);
 #endif
-#if CONFIG_POWERRUNE_TYPE == 1
+#if CONFIG_POWERRUNE_TYPE == 1 // RLOGO
     size_t required_size = sizeof(PowerRune_Rlogo_config_info_t);
 #endif
 #if CONFIG_POWERRUNE_TYPE == 2 // MOTORCTL
@@ -197,22 +197,20 @@ void Config::global_event_handler(void *handler_arg, esp_event_base_t base, int3
     esp_err_t err = ESP_OK;
     if (id == CONFIG_EVENT)
     {
-        memcpy(&config_common_info, event_data, sizeof(PowerRune_Common_config_info_t));
+        CONFIG_EVENT_DATA *config_event_data = (CONFIG_EVENT_DATA *)event_data;
+        memcpy(&config_common_info, &config_event_data->config_common_info, sizeof(PowerRune_Common_config_info_t));
 // event_data: PowerRune_Common_config_info_t, PowerRune_Armour/RLogo/Motor_config_info_t
 #if CONFIG_POWERRUNE_TYPE == 0 // ARMOUR
-        PowerRune_Armour_config_info_t *info = (PowerRune_Armour_config_info_t *)event_data + sizeof(PowerRune_Common_config_info_t);
-        memcpy(&config_info, info, sizeof(PowerRune_Armour_config_info_t));
+        memcpy(&config_info, &config_event_data->config_armour_info, sizeof(PowerRune_Armour_config_info_t));
 #endif
-#if CONFIG_POWERRUNE_TYPE == 1
-        PowerRune_Rlogo_config_info_t *info = (PowerRune_Rlogo_config_info_t *)event_data + sizeof(PowerRune_Common_config_info_t);
-        memcpy(&config_info, info, sizeof(PowerRune_Rlogo_config_info_t));
+#if CONFIG_POWERRUNE_TYPE == 1 // RLOGO
+        memcpy(&config_info, &config_event_data->config_rlogo_info, sizeof(PowerRune_Rlogo_config_info_t));
 #endif
 #if CONFIG_POWERRUNE_TYPE == 2 // MOTORCTL
-        PowerRune_Motor_config_info_t *info = (PowerRune_Motor_config_info_t *)event_data + sizeof(PowerRune_Common_config_info_t);
-        memcpy(&config_info, info, sizeof(PowerRune_Motor_config_info_t));
+        memcpy(&config_info, &config_event_data->config_motor_info, sizeof(PowerRune_Motor_config_info_t));
 #endif
         // Write config_info to NVS
-        Config::save();
+        err = Config::save();
         // Post Complete Event
         esp_event_post_to(pr_events_loop_handle, PRC, CONFIG_COMPLETE_EVENT, &err, sizeof(esp_err_t), portMAX_DELAY);
     }

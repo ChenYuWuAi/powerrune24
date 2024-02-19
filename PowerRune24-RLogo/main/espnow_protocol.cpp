@@ -1004,8 +1004,8 @@ ESPNowProtocol::ESPNowProtocol(esp_event_handler_t beacon_timeout)
 #else
     establish_peer_list();
 #endif
-    // // led闪烁
-    // led->set_mode(LED_MODE_FADE, 0);
+    // led闪烁
+    led->set_mode(LED_MODE_FADE, 0);
     // 创建解析数据任务
     xTaskCreate(parse_data_task, "parse_data_task", 4096, NULL, 6, NULL);
 #if CONFIG_POWERRUNE_TYPE == 1 // 主控
