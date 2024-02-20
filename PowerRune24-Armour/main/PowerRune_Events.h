@@ -1,7 +1,7 @@
 /**
  * @file PowerRune_Events.h
  * @brief 大符事件库
- * @version 1.1
+ * @version 1.4
  * @date 2024-02-19
  */
 #pragma once
@@ -9,26 +9,6 @@
 #include "esp_event.h"
 #include "espnow_protocol.h"
 
-// 定义events
-// spp服务
-ESP_EVENT_DEFINE_BASE(LED_EVENTS);
-ESP_EVENT_DEFINE_BASE(URL_EVENTS);
-ESP_EVENT_DEFINE_BASE(MAC_EVENTS);
-ESP_EVENT_DEFINE_BASE(SSID_EVENTS);
-ESP_EVENT_DEFINE_BASE(Wifi_EVENTS);
-ESP_EVENT_DEFINE_BASE(AOTA_EVENTS);
-ESP_EVENT_DEFINE_BASE(LIT_EVENTS);
-ESP_EVENT_DEFINE_BASE(STRIP_LIT_EVENTS);
-ESP_EVENT_DEFINE_BASE(R_LIT_EVENTS);
-ESP_EVENT_DEFINE_BASE(MATRIX_LIT_EVENTS);
-ESP_EVENT_DEFINE_BASE(PID_EVENTS);
-ESP_EVENT_DEFINE_BASE(ARMOUR_ID_EVENTS);
-// ops服务
-ESP_EVENT_DEFINE_BASE(RUN_EVENTS);
-ESP_EVENT_DEFINE_BASE(GPA_EVENTS);
-ESP_EVENT_DEFINE_BASE(UNLK_EVENTS);
-ESP_EVENT_DEFINE_BASE(STOP_EVENTS);
-ESP_EVENT_DEFINE_BASE(OTA_EVENTS);
 // PowerRune_Evets
 ESP_EVENT_DEFINE_BASE(PRC);
 ESP_EVENT_DEFINE_BASE(PRA);
@@ -109,7 +89,6 @@ struct PRA_PING_EVENT_DATA
 {
     uint8_t address;
     uint8_t data_len = sizeof(PRA_PING_EVENT_DATA);
-    uint8_t mac[ESP_NOW_ETH_ALEN];
     PowerRune_Armour_config_info_t config_info;
 };
 
@@ -121,9 +100,15 @@ struct PRA_START_EVENT_DATA
     uint8_t color = PR_RED;
 };
 
-struct PRA_HIT_EVENT_DATA
+struct PRA_STOP_EVENT_DATA
 {
     uint8_t address;
+    uint8_t data_len = sizeof(PRA_STOP_EVENT_DATA);
+};
+
+struct PRA_HIT_EVENT_DATA
+{
+    uint8_t address = 0xFF;
     uint8_t data_len = sizeof(PRA_HIT_EVENT_DATA);
     uint8_t score = 0;
 };
@@ -157,13 +142,12 @@ struct PRM_PING_EVENT_DATA
 {
     uint8_t address;
     uint8_t data_len = sizeof(PRM_PING_EVENT_DATA);
-    uint8_t mac[ESP_NOW_ETH_ALEN];
     PowerRune_Motor_config_info_t config_info;
 };
 
 struct PRM_UNLOCK_EVENT_DATA
 {
-    uint8_t address;
+    uint8_t address = 0x05;
     uint8_t data_len = sizeof(PRM_UNLOCK_EVENT_DATA);
 };
 
@@ -197,7 +181,7 @@ struct PRM_SPEED_STABLE_EVENT_DATA
 
 struct PRM_STOP_EVENT_DATA
 {
-    uint8_t address;
+    uint8_t address = 0x05;
     uint8_t data_len = sizeof(PRM_STOP_EVENT_DATA);
 };
 

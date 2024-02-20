@@ -19,6 +19,7 @@
 #include "esp_bt.h"
 #include "string.h"
 #include "esp_random.h"
+#include <vector>
 
 // BLE
 #include "esp_gap_ble_api.h"
@@ -49,6 +50,9 @@ ESPNowProtocol *espnow_protocol;
 // Config Class
 extern Config *config;
 extern esp_event_loop_handle_t pr_events_loop_handle;
+
+// Score Vector
+std::vector<uint8_t> score_vector;
 
 void run_task(void *pvParameter);
 void ota_task(void *pvParameter);

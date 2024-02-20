@@ -1,7 +1,9 @@
 /**
  * @file ble_events.h
  * @note BLE声明
-*/
+ * @version 1.0
+ * @date 2024-02-19
+ */
 #pragma once
 #ifndef _BLE_EVENTS_H_
 #define _BLE_EVENTS_H_
@@ -15,10 +17,6 @@ enum
     URL_CHAR,
     URL_VAL,
     URL_CFG,
-
-    MAC_CHAR,
-    MAC_VAL,
-    MAC_CFG,
 
     SSID_CHAR,
     SSID_VAL,
@@ -36,9 +34,9 @@ enum
     LIT_VAL,
     LIT_CFG,
 
-    STRIP_LIT_CHAR,
-    STRIP_LIT_VAL,
-    STRIP_LIT_CFG,
+    ARM_LIT_CHAR,
+    ARM_LIT_VAL,
+    ARM_LIT_CFG,
 
     R_LIT_CHAR,
     R_LIT_VAL,
@@ -105,12 +103,11 @@ enum
 static const uint16_t spp_service_uuid = 0x1827; // Mesh Proxy Service
 // 特征值的UUID
 #define UUID_URL 0x2AA6        // Central Address Resoluton
-#define UUID_MAC 0x2AC9        // Resolvable Private Address Only
 #define UUID_SSID 0x2AC3       // Object ID
 #define UUID_Wifi 0x2A3E       // Network Availability
 #define UUID_AOTA 0x2AC5       // Object Action Control Point
 #define UUID_LIT 0x2A0D        // DST Offset
-#define UUID_STRIP_LIT 0x2A01  // Appearance
+#define UUID_ARM_LIT 0x2A01    // Appearance
 #define UUID_R_LIT 0x2A9B      // Body Composition Feature
 #define UUID_MATRIX_LIT 0x2A9C // Body Composition Measurement
 #define UUID_PID 0x2A66        // Cycling Power Control Point
@@ -263,13 +260,6 @@ enum
     URL_EVENT_WRITE,
 };
 
-ESP_EVENT_DECLARE_BASE(MAC_EVENTS);
-enum
-{
-    MAC_EVENT_READ,
-    MAC_EVENT_WRITE,
-};
-
 ESP_EVENT_DECLARE_BASE(SSID_EVENTS);
 enum
 {
@@ -298,11 +288,11 @@ enum
     LIT_EVENT_WRITE,
 };
 
-ESP_EVENT_DECLARE_BASE(STRIP_LIT_EVENTS);
+ESP_EVENT_DECLARE_BASE(ARM_LIT_EVENTS);
 enum
 {
-    STRIP_LIT_EVENT_READ,
-    STRIP_LIT_EVENT_WRITE,
+    ARM_LIT_EVENT_READ,
+    ARM_LIT_EVENT_WRITE,
 };
 
 ESP_EVENT_DECLARE_BASE(R_LIT_EVENTS);
@@ -329,7 +319,6 @@ enum
 ESP_EVENT_DECLARE_BASE(ARMOUR_ID_EVENTS);
 enum
 {
-    ARMOUR_ID_EVENT_READ,
     ARMOUR_ID_EVENT_WRITE,
 };
 // OPS服务
@@ -365,49 +354,45 @@ enum
 
 // 系统参数设置服务的属性表的相关全局变量
 // url
-static const uint16_t url_uuid = UUID_URL;
-static const u_int8_t url_val[1] = {0};
-static const uint8_t url_ccc[1] = {0};
-// mac
-static const uint16_t mac_uuid = UUID_MAC;
-static const u_int8_t mac_val[1] = {0};
-static const uint8_t mac_ccc[1] = {0};
+static uint16_t url_uuid = UUID_URL;
+static u_int8_t url_val[100];
+static uint8_t url_ccc[1] = {0};
 // ssid
-static const uint16_t ssid_uuid = UUID_SSID;
-static const u_int8_t ssid_val[1] = {0};
-static const uint8_t ssid_ccc[1] = {0};
+static uint16_t ssid_uuid = UUID_SSID;
+static u_int8_t ssid_val[20] = {0};
+static uint8_t ssid_ccc[1] = {0};
 // wifi
-static const uint16_t wifi_uuid = UUID_Wifi;
-static const u_int8_t wifi_val[1] = {0};
-static const uint8_t wifi_ccc[1] = {0};
+static uint16_t wifi_uuid = UUID_Wifi;
+static u_int8_t wifi_val[20] = {0};
+static uint8_t wifi_ccc[1] = {0};
 // aota
-static const uint16_t aota_uuid = UUID_AOTA;
-static const u_int8_t aota_val[1] = {0};
-static const uint8_t aota_ccc[1] = {0};
+static uint16_t aota_uuid = UUID_AOTA;
+static u_int8_t aota_val[1] = {0};
+static uint8_t aota_ccc[1] = {0};
 // lit
-static const uint16_t lit_uuid = UUID_LIT;
-static const u_int8_t lit_val[1] = {0};
-static const uint8_t lit_ccc[1] = {0};
+static uint16_t lit_uuid = UUID_LIT;
+static u_int8_t lit_val[1] = {0};
+static uint8_t lit_ccc[1] = {0};
 // strip_lit
-static const uint16_t strip_lit_uuid = UUID_STRIP_LIT;
-static const u_int8_t strip_lit_val[1] = {0};
-static const uint8_t strip_lit_ccc[1] = {0};
+static uint16_t arm_lit_uuid = UUID_ARM_LIT;
+static u_int8_t arm_lit_val[1] = {0};
+static uint8_t arm_lit_ccc[1] = {0};
 // r_lit
-static const uint16_t r_lit_uuid = UUID_R_LIT;
-static const u_int8_t r_lit_val[1] = {0};
-static const uint8_t r_lit_ccc[1] = {0};
+static uint16_t r_lit_uuid = UUID_R_LIT;
+static u_int8_t r_lit_val[1] = {0};
+static uint8_t r_lit_ccc[1] = {0};
 // matrix_lit
-static const uint16_t matrix_lit_uuid = UUID_MATRIX_LIT;
-static const u_int8_t matrix_lit_val[1] = {0};
-static const uint8_t matrix_lit_ccc[1] = {0};
+static uint16_t matrix_lit_uuid = UUID_MATRIX_LIT;
+static u_int8_t matrix_lit_val[1] = {0};
+static uint8_t matrix_lit_ccc[1] = {0};
 // pid
-static const uint16_t pid_uuid = UUID_PID;
-static const u_int8_t pid_val[1] = {0};
-static const uint8_t pid_ccc[1] = {0};
+static uint16_t pid_uuid = UUID_PID;
+static u_int8_t pid_val[sizeof(float) * 6] = {0};
+static uint8_t pid_ccc[1] = {0};
 // armour_id
-static const uint16_t armour_id_uuid = UUID_ARMOUR_ID;
-static const u_int8_t armour_id_val[1] = {0};
-static const uint8_t armour_id_ccc[1] = {0};
+static uint16_t armour_id_uuid = UUID_ARMOUR_ID;
+static u_int8_t armour_id_val[1] = {0};
+static uint8_t armour_id_ccc[1] = {0};
 
 // 系统参数设置服务的属性表
 static const esp_gatts_attr_db_t spp_gatt_db[SPP_IDX_NB] = {
@@ -424,16 +409,6 @@ static const esp_gatts_attr_db_t spp_gatt_db[SPP_IDX_NB] = {
 
     [URL_CFG] = {{ESP_GATT_AUTO_RSP},
                  {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(url_ccc), (uint8_t *)url_ccc}},
-
-    // mac
-    [MAC_CHAR] = {{ESP_GATT_AUTO_RSP},
-                  {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
-
-    [MAC_VAL] = {{ESP_GATT_AUTO_RSP},
-                 {ESP_UUID_LEN_16, (uint8_t *)&mac_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(mac_val), sizeof(mac_val), (uint8_t *)mac_val}},
-
-    [MAC_CFG] = {{ESP_GATT_AUTO_RSP},
-                 {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(mac_ccc), (uint8_t *)mac_ccc}},
 
     // ssid
     [SSID_CHAR] = {{ESP_GATT_AUTO_RSP},
@@ -476,14 +451,14 @@ static const esp_gatts_attr_db_t spp_gatt_db[SPP_IDX_NB] = {
                  {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(lit_ccc), (uint8_t *)lit_ccc}},
 
     // strip_lit
-    [STRIP_LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
-                        {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+    [ARM_LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
+                      {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
 
-    [STRIP_LIT_VAL] = {{ESP_GATT_AUTO_RSP},
-                       {ESP_UUID_LEN_16, (uint8_t *)&strip_lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(strip_lit_val), sizeof(strip_lit_val), (uint8_t *)strip_lit_val}},
+    [ARM_LIT_VAL] = {{ESP_GATT_AUTO_RSP},
+                     {ESP_UUID_LEN_16, (uint8_t *)&arm_lit_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(arm_lit_val), sizeof(arm_lit_val), (uint8_t *)arm_lit_val}},
 
-    [STRIP_LIT_CFG] = {{ESP_GATT_AUTO_RSP},
-                       {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(strip_lit_ccc), (uint8_t *)strip_lit_ccc}},
+    [ARM_LIT_CFG] = {{ESP_GATT_AUTO_RSP},
+                     {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(arm_lit_ccc), (uint8_t *)arm_lit_ccc}},
 
     // r_lit
     [R_LIT_CHAR] = {{ESP_GATT_AUTO_RSP},
@@ -517,10 +492,10 @@ static const esp_gatts_attr_db_t spp_gatt_db[SPP_IDX_NB] = {
 
     // armour_id
     [ARMOUR_ID_CHAR] = {{ESP_GATT_AUTO_RSP},
-                        {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write_notify}},
+                        {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_write_notify}},
 
     [ARMOUR_ID_VAL] = {{ESP_GATT_AUTO_RSP},
-                       {ESP_UUID_LEN_16, (uint8_t *)&armour_id_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(armour_id_val), sizeof(armour_id_val), (uint8_t *)armour_id_val}},
+                       {ESP_UUID_LEN_16, (uint8_t *)&armour_id_uuid, ESP_GATT_PERM_WRITE, sizeof(armour_id_val), sizeof(armour_id_val), (uint8_t *)armour_id_val}},
 
     [ARMOUR_ID_CFG] = {{ESP_GATT_AUTO_RSP},
                        {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, sizeof(uint16_t), sizeof(armour_id_ccc), (uint8_t *)armour_id_ccc}},
@@ -533,7 +508,7 @@ static const u_int8_t ops_run_val[3] = {0};
 static const uint8_t ops_run_ccc[1] = {0};
 // gpa
 static const uint16_t ops_gpa_uuid = UUID_GPA;
-static const u_int8_t ops_gpa_val[1] = {0};
+static u_int8_t ops_gpa_val[10] = {0};
 
 // unlk
 static const uint16_t ops_unlk_uuid = UUID_UNLK;

@@ -1,3 +1,10 @@
+/**
+ * @file espnow_protocol.h
+ * @brief ESP-NOW协议
+ * @version 0.4
+ * @date 2024-02-19
+ * @note 用于ESP-NOW通信
+ */
 #pragma once
 // ESP Common
 #include <stdlib.h>
@@ -85,6 +92,7 @@ typedef struct
 typedef struct
 {
     EventGroupHandle_t event_group;
+    PowerRune_Armour_config_info_t *armour_config; // 大符配置信息数组首地址
     uint8_t mac_addr_new[ESP_NOW_ETH_ALEN];
 } reset_armour_id_t;
 
@@ -129,7 +137,6 @@ private: // espnow 数据包队列
                                          esp_event_base_t event_base,
                                          int32_t event_id,
                                          void *event_data);
-    esp_err_t reset_armour_id();
 #elif ((CONFIG_POWERRUNE_TYPE == 2) || (CONFIG_POWERRUNE_TYPE == 0)) // 从设备
     static uint8_t mac_addr[ESP_NOW_ETH_ALEN];
     // 包ID
@@ -204,7 +211,6 @@ public:
     static void tx_callback(const uint8_t *mac_addr, esp_now_send_status_t status);
 
     static void tx_event_handler(void *handler_args, esp_event_base_t event_base, int32_t event_id, void *event_data);
-    
 
     // 接受传入NULL，表示第一次建立peer list，否则表示接收到中途复位的设备，需要发送RESPONSE_EVENT
     static esp_err_t
@@ -212,5 +218,9 @@ public:
 
     static esp_err_t beacon_control(uint8_t mode);
 
-    ESPNowProtocol(esp_event_handler_t);
+    ESPNowProtocol(esp_event_handler_t beacon_timeout_handler = NULL);
+
+#if CONFIG_POWERRUNE_TYPE == 1 // 主设备
+    static esp_err_t reset_armour_id();
+#endif
 };

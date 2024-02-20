@@ -1,8 +1,8 @@
 /**
  * @file PowerRune_Armour.cpp
  * @brief 装甲板类
- * @version 0.1
- * @date 2024-02-18
+ * @version 0.2
+ * @date 2024-02-19
  * @note 装甲板类，用于装甲板控制
  */
 #include "PowerRune_Armour.h"
@@ -14,13 +14,14 @@ TaskHandle_t PowerRune_Armour::LED_update_task_handle;
 SemaphoreHandle_t PowerRune_Armour::LED_Strip_FSM_Semaphore;
 LED_Strip_FSM_t PowerRune_Armour::state;
 
-void PowerRune_Armour::clear_armour()
+void PowerRune_Armour::clear_armour(bool refresh)
 {
     for (uint8_t i = 0; i < 5; i++)
     {
         demux_led = i;
         led_strip[i]->clear_pixels();
-        led_strip[i]->refresh();
+        if (refresh)
+            led_strip[i]->refresh();
     }
 }
 
@@ -44,11 +45,11 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
             break;
         case LED_STRIP_TARGET:
         {
-            clear_armour();
+            clear_armour(false);
             config_info = config->get_config_info_pt();
             // 启动ISR
             GPIO_ISR_enable();
-            // 点亮靶状图案、上下装甲板，灯臂不点亮
+            // 点亮靶状图案、上下装甲板，灯臂刷新一次
             demux_led = LED_STRIP_MAIN_ARMOUR;
             if (state_task.color == PR_RED)
             {
@@ -71,6 +72,8 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
             demux_led = LED_STRIP_LOWER;
             led_strip[LED_STRIP_LOWER]->set_color(state_task.color == PR_RED ? config_info->brightness : 0, 0, state_task.color == PR_RED ? 0 : config_info->brightness);
             led_strip[LED_STRIP_LOWER]->refresh();
+            demux_led = LED_STRIP_ARM;
+            led_strip[LED_STRIP_ARM]->refresh();
             // 开启矩阵流水灯
             uint8_t i = 0;
             do
@@ -294,6 +297,15 @@ void PowerRune_Armour::hit(uint8_t score)
     xSemaphoreGive(LED_Strip_FSM_Semaphore);
 }
 
+void PowerRune_Armour::blink()
+{
+    ESP_LOGI(TAG_ARMOUR, "Activation Complete, Blink Armour");
+    // 状态机更新
+    state.LED_Strip_State = LED_STRIP_BLINK;
+    // 释放信号量
+    xSemaphoreGive(LED_Strip_FSM_Semaphore);
+}
+
 void PowerRune_Armour::global_pr_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
     switch (id)
@@ -305,6 +317,7 @@ void PowerRune_Armour::global_pr_event_handler(void *handler_args, esp_event_bas
         break;
     }
     case PRA_STOP_EVENT:
+
         stop();
         break;
     case PRA_HIT_EVENT:
@@ -316,6 +329,9 @@ void PowerRune_Armour::global_pr_event_handler(void *handler_args, esp_event_bas
             hit(hit_event_data->score);
         }
         break;
+    }
+    case PRA_COMPLETE_EVENT:
+    {
     }
     }
 }

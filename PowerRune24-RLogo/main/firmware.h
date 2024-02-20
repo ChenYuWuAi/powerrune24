@@ -102,18 +102,21 @@ public:
     const PowerRune_Armour_config_info_t *get_config_info_pt();
 #endif
 #if CONFIG_POWERRUNE_TYPE == 1
-    const PowerRune_Rlogo_config_info_t *get_config_info_pt();
+    static PowerRune_Rlogo_config_info_t *get_config_info_pt();
 
-    PowerRune_Armour_config_info_t *get_config_armour_info_pt(uint8_t index);
+    static PowerRune_Armour_config_info_t *get_config_armour_info_pt(uint8_t index);
 
-    PowerRune_Motor_config_info_t *get_config_motor_info_pt();
+    static PowerRune_Motor_config_info_t *get_config_motor_info_pt();
+
+    static PowerRune_Common_config_info_t *get_config_common_info_pt();
 #endif
 #if CONFIG_POWERRUNE_TYPE == 2 // MOTORCTL
-    const PowerRune_Motor_config_info_t *get_config_info_pt();
+    static const PowerRune_Motor_config_info_t *get_config_info_pt();
 #endif
     // Read config_common_info from NVS
-
+#if CONFIG_POWERRUNE_TYPE == 0 || CONFIG_POWERRUNE_TYPE == 2 // ARMOUR || MOTORCTL
     static const PowerRune_Common_config_info_t *get_config_common_info_pt();
+#endif
 
     static esp_err_t read();
 

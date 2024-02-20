@@ -1,7 +1,7 @@
 /**
  * @file firmware.cpp
  * @brief 固件类
- * @version 0.3
+ * @version 0.6
  * @date 2024-02-19
  */
 #include "firmware.h"
@@ -25,7 +25,8 @@ QueueHandle_t Firmware::ota_complete_queue = NULL;
 #if CONFIG_POWERRUNE_TYPE == 1
 const char *Config::PowerRune_description = "RLogo";
 PowerRune_Rlogo_config_info_t Config::config_info = {0};
-
+PowerRune_Armour_config_info_t Config::config_armour_info[5] = {0};
+PowerRune_Motor_config_info_t Config::config_motor_info = {0};
 #endif
 #if CONFIG_POWERRUNE_TYPE == 2 // MOTORCTL
 const char *Config::PowerRune_description = "Motor";
@@ -59,8 +60,10 @@ Config::Config()
         ESP_LOGE(TAG_FIRMWARE, "read config_info from NVS failed (%s)", esp_err_to_name(err));
         reset();
     }
-    // 注册PRC事件处理器
+// 注册PRC事件处理器
+#if CONFIG_POWERRUNE_TYPE == 0 || CONFIG_POWERRUNE_TYPE == 2 // ARMOUR || MOTORCTL
     esp_event_handler_register_with(pr_events_loop_handle, PRC, CONFIG_EVENT, (esp_event_handler_t)Config::global_event_handler, this);
+#endif
     ESP_LOGI(TAG_FIRMWARE, "Configuration Complete");
 }
 
@@ -72,7 +75,7 @@ const PowerRune_Armour_config_info_t *Config::get_config_info_pt()
 }
 #endif
 #if CONFIG_POWERRUNE_TYPE == 1
-const PowerRune_Rlogo_config_info_t *Config::get_config_info_pt()
+PowerRune_Rlogo_config_info_t *Config::get_config_info_pt()
 { // Read config_common_info from NVS
 
     return &config_info;
@@ -87,6 +90,11 @@ PowerRune_Motor_config_info_t *Config::get_config_motor_info_pt()
 {
     return &config_motor_info;
 }
+
+PowerRune_Common_config_info_t *Config::get_config_common_info_pt()
+{
+    return &config_common_info;
+}
 #endif
 #if CONFIG_POWERRUNE_TYPE == 2 // MOTORCTL
 const PowerRune_Motor_config_info_t *Config::get_config_info_pt()
@@ -94,11 +102,12 @@ const PowerRune_Motor_config_info_t *Config::get_config_info_pt()
     return &config_info;
 }
 #endif
-
+#if CONFIG_POWERRUNE_TYPE == 0 || CONFIG_POWERRUNE_TYPE == 2 // ARMOUR || MOTORCTL
 const PowerRune_Common_config_info_t *Config::get_config_common_info_pt()
 {
     return &config_common_info;
 }
+#endif
 
 esp_err_t Config::read()
 {
@@ -211,8 +220,10 @@ void Config::global_event_handler(void *handler_arg, esp_event_base_t base, int3
 #endif
         // Write config_info to NVS
         err = Config::save();
+        CONFIG_COMPLETE_EVENT_DATA config_complete_event_data;
+        config_complete_event_data.status = err;
         // Post Complete Event
-        esp_event_post_to(pr_events_loop_handle, PRC, CONFIG_COMPLETE_EVENT, &err, sizeof(esp_err_t), portMAX_DELAY);
+        esp_event_post_to(pr_events_loop_handle, PRC, CONFIG_COMPLETE_EVENT, &config_complete_event_data, sizeof(CONFIG_COMPLETE_EVENT_DATA), portMAX_DELAY);
     }
 }
 

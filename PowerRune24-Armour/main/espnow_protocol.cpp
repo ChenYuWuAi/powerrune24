@@ -1,7 +1,7 @@
 /**
  * @file espnow_protocol.cpp
  * @brief ESP-NOW协议类定义，用于ESP-NOW通信
- * @version 0.3
+ * @version 0.9
  * @date 2024-02-19
  * @note 本文件存放ESP-NOW协议类的定义，Wifi硬件初始化，esp-now的发送和接收回调函数，事件处理
  */
@@ -125,6 +125,7 @@ void ESPNowProtocol::rx_callback(const esp_now_recv_info_t *esp_now_info, const 
 #if CONFIG_POWERRUNE_TYPE == 0 || CONFIG_POWERRUNE_TYPE == 2 // Armour || Motor
 void ESPNowProtocol::beacon_task(void *pvParameter)
 {
+    beacon_send_time = xTaskGetTickCount();
     while (1)
     {
         if ((xTaskGetTickCount() - beacon_time) > CONFIG_BEACON_TIMEOUT / portTICK_PERIOD_MS)
@@ -133,10 +134,9 @@ void ESPNowProtocol::beacon_task(void *pvParameter)
             esp_event_post_to(pr_events_loop_handle, PRC, BEACON_TIMEOUT_EVENT, NULL, 0, 0);
         }
         // 十秒发送一次beacon PING
-        ESP_LOGD(TAG_MESSAGER, "[beacon] Sending PING_EVENT to " MACSTR, MAC2STR(mac_addr));
 // PING EVENT 数据
 #if CONFIG_POWERRUNE_TYPE == 0 // Armour
-        ESP_LOGD(TAG_MESSAGER, "Sending PING_EVENT to " MACSTR, MAC2STR(broadcast_mac));
+        ESP_LOGD(TAG_MESSAGER, "[beacon] Sending PING_EVENT to " MACSTR, MAC2STR(mac_addr));
         int32_t event_id = PRA_PING_EVENT;
         PRA_PING_EVENT_DATA ping_data;
         // 如果已经设置ID，则广播ID，否则维持0xFF
@@ -145,30 +145,24 @@ void ESPNowProtocol::beacon_task(void *pvParameter)
             ping_data.address = config_info->armour_id - 1;
         else
             ping_data.address = 0xFF;
-        // MAC copy
-        memcpy(&ping_data.mac, &self_mac, ESP_NOW_ETH_ALEN);
         memcpy(&ping_data.config_info, config->get_config_info_pt(), sizeof(PowerRune_Armour_config_info_t));
         send_data(0, mac_addr, PRA, event_id, &ping_data, sizeof(PRA_PING_EVENT_DATA), 0);
-
+        vTaskDelayUntil(&beacon_send_time, 1000 / portTICK_PERIOD_MS);
 #endif
 #if CONFIG_POWERRUNE_TYPE == 2 // Motor
         ESP_LOGD(TAG_MESSAGER, "Sending PING_EVENT to " MACSTR, MAC2STR(broadcast_mac));
         int32_t event_id = PRM_PING_EVENT;
         PRM_PING_EVENT_DATA ping_data;
         ping_data.address = MOTOR;
-        // MAC copy
-        memcpy(&ping_data.mac, &self_mac, ESP_NOW_ETH_ALEN);
         memcpy(&ping_data.config_info, config->get_config_info_pt(), sizeof(PowerRune_Motor_config_info_t));
         send_data(0, mac_addr, PRM, &event_id, &ping_data, sizeof(PRM_PING_EVENT_DATA), 0);
+        vTaskDelayUntil(&beacon_send_time, 1000 / portTICK_PERIOD_MS);
 #endif
-        beacon_send_time = xTaskGetTickCount();
-        vTaskDelayUntil(&beacon_send_time, 10000 / portTICK_PERIOD_MS);
         // 如果有接收正常包视作beacon正常，继续等待
-        while (xTaskGetTickCount() - beacon_send_time < 8000 / portTICK_PERIOD_MS)
+        while (xTaskGetTickCount() - beacon_time < 5000 / portTICK_PERIOD_MS)
         {
             // 重新等待
-            beacon_send_time = xTaskGetTickCount();
-            vTaskDelayUntil(&beacon_send_time, 10000 / portTICK_PERIOD_MS);
+            vTaskDelayUntil(&beacon_send_time, 9000 / portTICK_PERIOD_MS);
         }
     }
 }
@@ -215,9 +209,9 @@ void ESPNowProtocol::parse_data_task(void *pvParameter)
                     free(espnow_data_pack);
                     continue;
                 }
-                ESP_LOGE(TAG_MESSAGER, "packet %i ID check failed", espnow_data_pack->pack_id);
+                ESP_LOGE(TAG_MESSAGER, "packet %i ID check failed, current rx_id %i", espnow_data_pack->pack_id, packet_rx_id[mac_to_address(received_data->src_MAC)]);
                 // 发送ACK_FAIL，更新ID，但不处理
-                send_ACK(packet_rx_id[mac_to_address(received_data->src_MAC)], received_data->src_MAC, ACK_FAIL);
+                send_ACK(packet_rx_id[mac_to_address(received_data->src_MAC)] + 1, received_data->src_MAC, ACK_FAIL);
                 // 直接丢包，释放内存
                 free(received_data->data);
                 free(espnow_data_pack);
@@ -232,13 +226,12 @@ void ESPNowProtocol::parse_data_task(void *pvParameter)
                 if (espnow_data_pack->pack_id == 0 && data[12] == RESPONSE_EVENT)
                 {
                     beacon_time = xTaskGetTickCount();
-                    beacon_send_time = beacon_time;
                     ESP_LOGI(TAG_MESSAGER, "update beacon: %i", (int)beacon_time);
                     free(received_data->data);
                     free(espnow_data_pack);
                     continue;
                 }
-                ESP_LOGE(TAG_MESSAGER, "DATA packet %i ID check failed", espnow_data_pack->pack_id);
+                ESP_LOGE(TAG_MESSAGER, "DATA packet %i ID check failed, current rx_id %i", espnow_data_pack->pack_id, packet_rx_id);
                 // 发送ACK_FAIL，更新ID，但不处理
                 send_ACK(packet_rx_id + 1, received_data->src_MAC, ACK_FAIL);
                 // 直接丢包，释放内存
@@ -343,6 +336,11 @@ void ESPNowProtocol::parse_data_task(void *pvParameter)
 #endif
             // 发送ACK_OK
             xEventGroupSetBits(send_state, SEND_ACK_OK_BIT);
+#if CONFIG_POWERRUNE_TYPE == 0 || CONFIG_POWERRUNE_TYPE == 2 // Armour || Motor
+            // 视作beacon更新依据
+            beacon_time = xTaskGetTickCount();
+            ESP_LOGI(TAG_MESSAGER, "update beacon: %i", (int)beacon_time);
+#endif
             // 释放内存
             free(received_data->data);
         }
@@ -377,6 +375,11 @@ void ESPNowProtocol::parse_data_task(void *pvParameter)
 #endif
                 ESP_LOGW(TAG_MESSAGER, "ACK_FAIL packet %i ID check ok, and updating TX id is required", ack_fail_pack.pack_id);
             }
+#if CONFIG_POWERRUNE_TYPE == 0 || CONFIG_POWERRUNE_TYPE == 2 // Armour || Motor
+            // 视作beacon更新依据
+            beacon_time = xTaskGetTickCount();
+            ESP_LOGI(TAG_MESSAGER, "update beacon: %i", (int)beacon_time);
+#endif
             // 发送ACK_FAIL
             xEventGroupSetBits(send_state, SEND_ACK_FAIL_BIT);
             // 释放内存
@@ -403,7 +406,7 @@ esp_err_t ESPNowProtocol::send_data(uint16_t packet_tx_id, uint8_t *dest_mac, es
     data_len应该与事件数据结构体内的data_len一致，即事件结构体的大小
     */
     // 获取互斥锁
-    if (xSemaphoreTake(tx_semaphore, mutex ? portMAX_DELAY : CONFIG_ESPNOW_TIMEOUT / portTICK_PERIOD_MS) != pdTRUE)
+    if (xSemaphoreTake(tx_semaphore, mutex ? portMAX_DELAY : 2 * CONFIG_ESPNOW_TIMEOUT / portTICK_PERIOD_MS) != pdTRUE)
     {
         ESP_LOGE(TAG_MESSAGER, "Failed to take tx_semaphore");
         return ESP_FAIL;
@@ -550,11 +553,12 @@ esp_err_t ESPNowProtocol::send_data(uint16_t packet_tx_id, uint8_t *dest_mac, es
 
 esp_err_t ESPNowProtocol::send_ACK(uint16_t packet_tx_id, uint8_t *dest_mac, PacketType type)
 {
+    bool mutex_flag = true;
     // 获取互斥锁
-    if (xSemaphoreTake(tx_semaphore, CONFIG_ESPNOW_TIMEOUT / portTICK_PERIOD_MS) != pdTRUE)
+    if (xSemaphoreTake(tx_semaphore, 2 * CONFIG_ESPNOW_TIMEOUT / portTICK_PERIOD_MS) != pdTRUE)
     {
-        ESP_LOGE(TAG_MESSAGER, "Failed to take tx_semaphore");
-        return ESP_FAIL;
+        ESP_LOGE(TAG_MESSAGER, "Failed to take tx_semaphore, forbid operation to EventGroup");
+        mutex_flag = false;
     }
     ACK_OK_pack_t *packet = (ACK_OK_pack_t *)malloc(sizeof(ACK_OK_pack_t));
     packet->header = (type == ACK_OK) ? POWERRUNE_ACK_OK_HEADER : POWERRUNE_ACK_FAIL_HEADER;
@@ -568,30 +572,35 @@ esp_err_t ESPNowProtocol::send_ACK(uint16_t packet_tx_id, uint8_t *dest_mac, Pac
         free(packet);
         return err;
     }
-    // 等待发送成功或失败
-    xEventGroupWaitBits(send_state, SEND_COMPLETE_BIT | SEND_FAIL_BIT, pdFALSE, pdFALSE, CONFIG_ESPNOW_TIMEOUT / portTICK_PERIOD_MS);
-    if (xEventGroupGetBits(send_state) & SEND_COMPLETE_BIT)
+    if (mutex_flag)
     {
-        ESP_LOGD(TAG_MESSAGER, "ACK %i packet %i send success", type, packet_tx_id);
-        xEventGroupClearBits(send_state, SEND_COMPLETE_BIT);
-    }
-    else if (xEventGroupGetBits(send_state) & SEND_FAIL_BIT)
-    {
-        ESP_LOGE(TAG_MESSAGER, "ACK %i packet %i send error in tx callback", type, packet_tx_id);
-        xEventGroupClearBits(send_state, SEND_FAIL_BIT);
-        free(packet);
-        return ESP_FAIL;
-    }
-    else
-    {
-        ESP_LOGE(TAG_MESSAGER, "ACK %i packet %i send timeout", type, packet_tx_id);
-        xEventGroupClearBits(send_state, SEND_COMPLETE_BIT | SEND_FAIL_BIT);
-        free(packet);
-        return ESP_FAIL;
+
+        // 等待发送成功或失败
+        xEventGroupWaitBits(send_state, SEND_COMPLETE_BIT | SEND_FAIL_BIT, pdFALSE, pdFALSE, CONFIG_ESPNOW_TIMEOUT / portTICK_PERIOD_MS);
+        if (xEventGroupGetBits(send_state) & SEND_COMPLETE_BIT)
+        {
+            ESP_LOGD(TAG_MESSAGER, "ACK %i packet %i send success", type, packet_tx_id);
+            xEventGroupClearBits(send_state, SEND_COMPLETE_BIT);
+        }
+        else if (xEventGroupGetBits(send_state) & SEND_FAIL_BIT)
+        {
+            ESP_LOGE(TAG_MESSAGER, "ACK %i packet %i send error in tx callback", type, packet_tx_id);
+            xEventGroupClearBits(send_state, SEND_FAIL_BIT);
+            free(packet);
+            return ESP_FAIL;
+        }
+        else
+        {
+            ESP_LOGE(TAG_MESSAGER, "ACK %i packet %i send timeout", type, packet_tx_id);
+            xEventGroupClearBits(send_state, SEND_COMPLETE_BIT | SEND_FAIL_BIT);
+            free(packet);
+            return ESP_FAIL;
+        }
     }
     free(packet);
     // 释放互斥锁
-    xSemaphoreGive(tx_semaphore);
+    if (mutex_flag)
+        xSemaphoreGive(tx_semaphore);
     return ESP_OK;
 }
 
@@ -717,6 +726,18 @@ esp_err_t ESPNowProtocol::reset_armour_id()
     }
     ESP_LOGI(TAG_MESSAGER, "[Reset ID] PowerRune Armour ID reset done");
     esp_event_handler_unregister_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, reset_id_PRA_HIT_handler);
+    // 给所有设备发送PRA_STOP_EVENT
+    PRA_STOP_EVENT_DATA pra_stop_event_data;
+    for (size_t i = 0; i < 5; i++)
+    {
+        pra_stop_event_data.address = i;
+        esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
+        xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    }
+    // 释放内存
+    delete[] config_info;
+    vEventGroupDelete(reset_armour_id_event_group);
+
     return ESP_OK;
 }
 #endif
@@ -771,8 +792,6 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
             ping_data.address = config_info->armour_id - 1;
         else
             ping_data.address = 0xFF;
-        // MAC copy
-        memcpy(ping_data.mac, self_mac, ESP_NOW_ETH_ALEN);
         memcpy(&ping_data.config_info, config->get_config_info_pt(), sizeof(PowerRune_Armour_config_info_t));
         send_data(0, broadcast_mac, PRA, event_id, &ping_data, sizeof(PRA_PING_EVENT_DATA), 0);
 
@@ -782,8 +801,6 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
         int32_t event_id = PRM_PING_EVENT;
         PRM_PING_EVENT_DATA ping_data;
         ping_data.address = MOTOR;
-        // MAC copy
-        memcpy(&ping_data.mac, &self_mac, ESP_NOW_ETH_ALEN);
         memcpy(&ping_data.config_info, config->get_config_info_pt(), sizeof(PowerRune_Motor_config_info_t));
         send_data(0, broadcast_mac, PRM, &event_id, &ping_data, sizeof(PRM_PING_EVENT_DATA), 0);
 #endif
@@ -873,7 +890,9 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
                     memcpy(peer->peer_addr, received_data->src_MAC, ESP_NOW_ETH_ALEN);
                     ESP_ERROR_CHECK(esp_now_add_peer(peer));
                     // 保存设备配置
-                    memcpy(&packet.event_data[2], config->get_config_armour_info_pt(packet.event_data[0]), sizeof(PowerRune_Armour_config_info_t));
+                    memcpy(config->get_config_armour_info_pt(packet.event_data[0]), packet.event_data + 2, sizeof(PowerRune_Armour_config_info_t));
+                    ESP_LOGD(TAG_MESSAGER, "Config info of armour %i:", packet.event_data[0]);
+                    esp_log_buffer_hex(TAG_MESSAGER, config->get_config_armour_info_pt(packet.event_data[0]), sizeof(PowerRune_Armour_config_info_t));
                     // 发送RESPONSE_EVENT
                     int32_t event_id = RESPONSE_EVENT;
                     send_data(0, received_data->src_MAC, PRC, event_id, NULL, 0, 0);
@@ -900,7 +919,10 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
                             memcpy(peer->peer_addr, received_data->src_MAC, ESP_NOW_ETH_ALEN);
                             ESP_ERROR_CHECK(esp_now_add_peer(peer));
                             // 保存设备配置
-                            memcpy(&packet.event_data[2], config->get_config_armour_info_pt(i), sizeof(PowerRune_Armour_config_info_t));
+                            memcpy(config->get_config_armour_info_pt(i), packet.event_data + 2, sizeof(PowerRune_Armour_config_info_t));
+                            ESP_LOGD(TAG_MESSAGER, "[unreset] Config info of armour %i:", i);
+                            esp_log_buffer_hex(TAG_MESSAGER, config->get_config_armour_info_pt(i), sizeof(PowerRune_Armour_config_info_t));
+
                             // 发送RESPONSE_EVENT
                             int32_t event_id = RESPONSE_EVENT;
                             send_data(0, received_data->src_MAC, PRC, event_id, NULL, 0, 0);
@@ -919,7 +941,9 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
             else if (packet.event_data[0] == MOTOR) // Address
             {
                 memcpy(mac_addr[MOTOR], received_data->src_MAC, ESP_NOW_ETH_ALEN); // 保存设备配置
-                memcpy(&packet.event_data[2], config->get_config_motor_info_pt(), sizeof(PowerRune_Armour_config_info_t));
+                memcpy(config->get_config_motor_info_pt(), packet.event_data + 2, sizeof(PowerRune_Motor_config_info_t));
+                ESP_LOGD(TAG_MESSAGER, "Config info of motor:");
+                esp_log_buffer_hex(TAG_MESSAGER, config->get_config_motor_info_pt(), sizeof(PowerRune_Motor_config_info_t));
             }
             else
             {
@@ -943,8 +967,6 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
 
 #endif
 
-            // 释放内存
-            free(peer);
             free(received_data->data);
             break;
         }
@@ -957,6 +979,8 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
             continue;
         }
     }
+    // 释放内存
+    free(peer);
 
     // 等待1s并清空队列，丢弃多余的PING包
     while (xQueueReceive(espnow_rx_queue, received_data, 1000 / portTICK_PERIOD_MS) == pdTRUE)
@@ -1038,6 +1062,7 @@ ESPNowProtocol::ESPNowProtocol(esp_event_handler_t beacon_timeout)
 #endif
         // 创建Beacon任务
 #if CONFIG_POWERRUNE_TYPE == 0 || CONFIG_POWERRUNE_TYPE == 2 // Armour || Motor
+    assert(beacon_timeout != NULL);
     beacon_timeout_handler = beacon_timeout;
     beacon_control(1);
 #endif

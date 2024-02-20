@@ -1,7 +1,7 @@
 /**
  * @file PowerRune_Armour.h
  * @brief PowerRune_Armour类的头文件
- * @version 0.1
+ * @version 0.2
  * @date 2024-02-18
  * @note 本文件用于维护装甲板上的所有LED、按键以及它们的事件处理
  */
@@ -206,7 +206,9 @@ private:
     // 装甲板命中
     static inline void hit(uint8_t score);
     // 装甲板清除
-    static inline void clear_armour();
+    static inline void clear_armour(bool refresh = true);
+    // 装甲板激活完毕
+    static inline void blink();
 
 public:
     PowerRune_Armour();
