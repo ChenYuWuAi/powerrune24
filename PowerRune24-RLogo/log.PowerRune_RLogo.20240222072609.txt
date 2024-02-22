@@ -1,0 +1,669 @@
+D (10480) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9d:18[0m
+D (10481) Messager: Received 19 bytes from 48:27:e2:d6:9d:18[0m
+D (10482) Messager: header: 0x24DF[0m
+D (10485) Messager: pack_id: 0x00000001[0m
+D (10489) Messager: event_base: PRA[0m
+D (10493) Messager: event_id: 0x04[0m
+D (10496) Messager: event_data_len: 6[0m
+D (10498) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c8[0m
+D (10507) Messager: CRC16: 0x0000[0m
+[0;32mI (10510) Messager: Reset ID flag set[0m
+[0;32mI (10515) Messager: Peer added[0m
+D (10516) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9c:fc[0m
+D (10525) Messager: [unreset] Config info of armour 0:[0m
+[0;32mI (10531) Messager: 7f ff 7f 7f [0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+D (10538) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:16:24[0m
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (10549) Messager: header: 0x24DF[0m
+D (10553) Messager: pack_id: 0x00003FC9[0m
+D (10557) Messager: event_base: PRC[0m
+D (10560) Messager: event_id: 0x04[0m
+D (10564) Messager: event_data_len: 0[0m
+D (10568) Messager: CRC16: 0xDE1D[0m
+D (10572) Messager: Send packet successfully in tx callback[0m
+D (10577) Messager: packet 1 send success[0m
+D (10581) Messager: Received 19 bytes from 48:27:e2:c9:15:c8[0m
+D (10586) Messager: header: 0x24DF[0m
+D (10590) Messager: pack_id: 0x00000001[0m
+D (10594) Messager: event_base: PRA[0m
+D (10597) Messager: event_id: 0x04[0m
+D (10601) Messager: event_data_len: 6[0m
+D (10604) Messager: CRC16: 0x0000[0m
+[0;32mI (10608) Messager: Reset ID flag set[0m
+[0;32mI (10612) Messager: Peer added[0m
+D (10616) Messager: [unreset] Config info of armour 1:[0m
+[0;32mI (10621) Messager: 7f ff 7f 7f [0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (10633) Messager: header: 0x24DF[0m
+D (10637) Messager: pack_id: 0x00003FC9[0m
+D (10641) Messager: event_base: PRC[0m
+D (10644) Messager: event_id: 0x04[0m
+D (10648) Messager: event_data_len: 0[0m
+D (10651) Messager: CRC16: 0xDE1D[0m
+D (10656) Messager: Send packet successfully in tx callback[0m
+D (10661) Messager: packet 1 send success[0m
+D (10665) Messager: Received 19 bytes from 48:27:e2:d6:9c:fc[0m
+D (10670) Messager: header: 0x24DF[0m
+D (10674) Messager: pack_id: 0x00000001[0m
+D (10678) Messager: event_base: PRA[0m
+D (10681) Messager: event_id: 0x04[0m
+D (10685) Messager: event_data_len: 6[0m
+D (10688) Messager: CRC16: 0x0000[0m
+[0;32mI (10692) Messager: Reset ID flag set[0m
+[0;32mI (10696) Messager: Peer added[0m
+D (10700) Messager: [unreset] Config info of armour 2:[0m
+[0;32mI (10705) Messager: 7f ff 7f 7f [0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (10717) Messager: header: 0x24DF[0m
+D (10721) Messager: pack_id: 0x00003FC9[0m
+D (10724) Messager: event_base: PRC[0m
+D (10728) Messager: event_id: 0x04[0m
+D (10731) Messager: event_data_len: 0[0m
+D (10735) Messager: CRC16: 0xDE1D[0m
+D (10740) Messager: Send packet successfully in tx callback[0m
+D (10744) Messager: packet 1 send success[0m
+D (10748) Messager: Received 19 bytes from 48:27:e2:c9:16:24[0m
+D (10754) Messager: header: 0x24DF[0m
+D (10758) Messager: pack_id: 0x00000001[0m
+D (10761) Messager: event_base: PRA[0m
+D (10765) Messager: event_id: 0x04[0m
+D (10768) Messager: event_data_len: 6[0m
+D (10772) Messager: CRC16: 0x0000[0m
+[0;32mI (10776) Messager: Reset ID flag set[0m
+[0;32mI (10780) Messager: Peer added[0m
+D (10784) Messager: [unreset] Config info of armour 3:[0m
+[0;32mI (10789) Messager: 7f ff 7f 7f [0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (10801) Messager: header: 0x24DF[0m
+D (10804) Messager: pack_id: 0x00003FC9[0m
+D (10808) Messager: event_base: PRC[0m
+D (10812) Messager: event_id: 0x04[0m
+D (10815) Messager: event_data_len: 0[0m
+D (10819) Messager: CRC16: 0xDE1D[0m
+D (10824) Messager: Send packet successfully in tx callback[0m
+D (10828) Messager: packet 1 send success[0m
+D (11544) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c4[0m
+D (11544) Messager: Received 19 bytes from 48:27:e2:c9:15:c4[0m
+D (11546) Messager: header: 0x24DF[0m
+D (11549) Messager: pack_id: 0x00000001[0m
+D (11553) Messager: event_base: PRA[0m
+D (11556) Messager: event_id: 0x04[0m
+D (11560) Messager: event_data_len: 6[0m
+D (11564) Messager: CRC16: 0x0000[0m
+[0;32mI (11567) Messager: Reset ID flag set[0m
+D (11569) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9d:18[0m
+[0;32mI (11578) Messager: Peer added[0m
+D (11582) Messager: [unreset] Config info of armour 4:[0m
+[0;32mI (11587) Messager: 7f ff 7f 7f [0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (11599) Messager: header: 0x24DF[0m
+D (11603) Messager: pack_id: 0x00003FC9[0m
+D (11605) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9c:fc[0m
+D (11614) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:16:24[0m
+D (11620) Messager: event_base: PRC[0m
+D (11624) Messager: event_id: 0x04[0m
+D (11627) Messager: event_data_len: 0[0m
+D (11631) Messager: CRC16: 0xDE1D[0m
+D (11636) Messager: Send packet successfully in tx callback[0m
+D (11640) Messager: packet 1 send success[0m
+D (12644) Messager: Peer list established[0m
+[0;32mI (12644) gpio: GPIO[2]| InputEn: 0| OutputEn: 0| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0 [0m
+D (12646) ledc: Using clock source 4 (in slow mode), divisor: 0x1f4[0m
+D (12653) ledc: In slow speed mode, global clk set: 4[0m
+D (12658) ledc: LEDC_PWM CHANNEL 0|GPIO 02|Duty 0000|Time 0[0m
+D (12663) intr_alloc: Connected src 23 to int 11 (cpu 0)[0m
+D (12658) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9d:18[0m
+D (12676) ledc: cur duty: 0; target: 4095, step: 1023, cycle: 1; scale: 1; dir: 1
+[0m
+D (12676) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c8[0m
+[0;32mI (12690) LED: LED mode: 1, blink_code: 0[0m
+D (12694) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9c:fc[0m
+D (12702) Messager: [parse_task] Received 19 bytes from 48:27:e2:d6:9d:18[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (12714) Messager: Received PING packet from 48:27:e2:d6:9d:18, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (12730) Messager: header: 0x24DF[0m
+D (12734) Messager: pack_id: 0x00003FC9[0m
+D (12738) Messager: event_base: PRC[0m
+D (12741) Messager: event_id: 0x04[0m
+D (12745) Messager: event_data_len: 0[0m
+D (12749) Messager: CRC16: 0xDE1D[0m
+[0;32mI (12752) Messager: [Reset ID] Resetting PowerRune Armour ID...[0m
+D (12753) Messager: Send packet successfully in tx callback[0m
+D (12764) event: running post PRA:1 with handler 0x4200c8b0 and context 0x3fcb4390 on loop 0x3fca5040[0m
+0x4200c8b0: ESPNowProtocol::tx_event_handler(void*, char const*, long, void*) at /home/devcontainers/IDF/powerrune-24/PowerRune24-RLogo/main/espnow_protocol.cpp:646
+DATA: DF 24 C9 3F 00 00 50 52 41 00 04 00 01 00 04 00 00 
+DATA: DF 24 C9 3F 5D 9A 50 52 41 00 04 00 01 00 04 00 00 
+D (12784) Messager: header: 0x24DF[0m
+D (12787) Messager: pack_id: 0x00003FC9[0m
+D (12791) Messager: event_base: PRA[0m
+D (12795) Messager: event_id: 0x01[0m
+D (12798) Messager: event_data_len: 4[0m
+D (12802) Messager: CRC16: 0x9A5D[0m
+D (12805) Messager: packet 1 send success[0m
+D (12809) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c8[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (12822) Messager: Received PING packet from 48:27:e2:c9:15:c8, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (12838) Messager: header: 0x24DF[0m
+D (12842) Messager: pack_id: 0x00003FC9[0m
+D (12845) Messager: event_base: PRC[0m
+D (12849) Messager: event_id: 0x04[0m
+D (12852) Messager: event_data_len: 0[0m
+D (12856) Messager: CRC16: 0xDE1D[0m
+D (12861) Messager: Send packet successfully in tx callback[0m
+D (12865) Messager: packet 1 send success[0m
+D (12869) Messager: [parse_task] Received 19 bytes from 48:27:e2:d6:9c:fc[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (12882) Messager: Received PING packet from 48:27:e2:d6:9c:fc, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (12898) Messager: header: 0x24DF[0m
+D (12902) Messager: pack_id: 0x00003FC9[0m
+D (12906) Messager: event_base: PRC[0m
+D (12909) Messager: event_id: 0x04[0m
+D (12913) Messager: event_data_len: 0[0m
+D (12916) Messager: CRC16: 0xDE1D[0m
+D (12921) Messager: Send packet successfully in tx callback[0m
+D (12926) Messager: packet 1 send success[0m
+D (12931) Messager: Send packet successfully in tx callback[0m
+D (12935) Messager: packet 1 send success[0m
+D (13511) ledc: cur duty: 4095; target: 0, step: 1023, cycle: 1; scale: 1; dir: 0
+[0m
+D (13703) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c4[0m
+D (13703) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c4[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (13711) Messager: Received PING packet from 48:27:e2:c9:15:c4, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (13728) Messager: header: 0x24DF[0m
+D (13731) Messager: pack_id: 0x00003FC9[0m
+D (13735) Messager: event_base: PRC[0m
+D (13738) Messager: event_id: 0x04[0m
+D (13742) Messager: event_data_len: 0[0m
+D (13746) Messager: CRC16: 0xDE1D[0m
+D (13774) Messager: Send packet successfully in tx callback[0m
+D (13775) Messager: packet 1 send success[0m
+D (13777) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9c:fc[0m
+D (13780) Messager: [parse_task] Received 19 bytes from 48:27:e2:d6:9c:fc[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (13792) Messager: Received PING packet from 48:27:e2:d6:9c:fc, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (13809) Messager: header: 0x24DF[0m
+D (13812) Messager: pack_id: 0x00003FC9[0m
+D (13816) Messager: event_base: PRC[0m
+D (13820) Messager: event_id: 0x04[0m
+D (13823) Messager: event_data_len: 0[0m
+D (13827) Messager: CRC16: 0xDE1D[0m
+D (13832) Messager: Send packet successfully in tx callback[0m
+D (13836) Messager: packet 1 send success[0m
+[0;31mE (13939) Messager: packet 1 ACK timeout[0m
+D (13940) Messager: Send packet successfully in tx callback[0m
+D (13940) Messager: packet 1 send success[0m
+D (14331) ledc: cur duty: 0; target: 4095, step: 1023, cycle: 1; scale: 1; dir: 1
+[0m
+D (14779) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c4[0m
+D (14779) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c4[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (14787) Messager: Received PING packet from 48:27:e2:c9:15:c4, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (14804) Messager: header: 0x24DF[0m
+D (14807) Messager: pack_id: 0x00003FC9[0m
+D (14811) Messager: event_base: PRC[0m
+D (14815) Messager: event_id: 0x04[0m
+D (14815) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9d:18[0m
+D (14825) Messager: event_data_len: 0[0m
+D (14829) Messager: CRC16: 0xDE1D[0m
+D (14833) Messager: Send packet successfully in tx callback[0m
+D (14838) Messager: packet 1 send success[0m
+D (14842) Messager: [parse_task] Received 19 bytes from 48:27:e2:d6:9d:18[0m
+D (14842) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c8[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (14861) Messager: Received PING packet from 48:27:e2:d6:9d:18, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (14877) Messager: header: 0x24DF[0m
+D (14881) Messager: pack_id: 0x00003FC9[0m
+D (14885) Messager: event_base: PRC[0m
+D (14888) Messager: event_id: 0x04[0m
+D (14892) Messager: event_data_len: 0[0m
+D (14895) Messager: CRC16: 0xDE1D[0m
+D (14900) Messager: Send packet successfully in tx callback[0m
+D (14905) Messager: packet 1 send success[0m
+D (14909) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c8[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (14921) Messager: Received PING packet from 48:27:e2:c9:15:c8, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (14937) Messager: header: 0x24DF[0m
+D (14941) Messager: pack_id: 0x00003FC9[0m
+[0;31mE (14942) Messager: packet 1 ACK timeout[0m
+D (14950) Messager: event_base: PRC[0m
+D (14951) Messager: Send packet successfully in tx callback[0m
+D (14959) Messager: event_id: 0x04[0m
+D (14962) Messager: event_data_len: 0[0m
+D (14966) Messager: CRC16: 0xDE1D[0m
+D (14969) Messager: packet 1 send success[0m
+D (14975) Messager: Send packet successfully in tx callback[0m
+D (14979) Messager: packet 1 send success[0m
+D (15152) ledc: cur duty: 4095; target: 0, step: 1023, cycle: 1; scale: 1; dir: 0
+[0m
+D (15855) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c4[0m
+D (15856) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c4[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (15864) Messager: Received PING packet from 48:27:e2:c9:15:c4, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (15880) Messager: header: 0x24DF[0m
+D (15884) Messager: pack_id: 0x00003FC9[0m
+D (15888) Messager: event_base: PRC[0m
+D (15891) Messager: event_id: 0x04[0m
+D (15892) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9d:18[0m
+D (15902) Messager: event_data_len: 0[0m
+D (15905) Messager: CRC16: 0xDE1D[0m
+D (15910) Messager: Send packet successfully in tx callback[0m
+D (15914) Messager: packet 1 send success[0m
+D (15918) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c8[0m
+D (15925) Messager: [parse_task] Received 19 bytes from 48:27:e2:d6:9d:18[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (15938) Messager: Received PING packet from 48:27:e2:d6:9d:18, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (15954) Messager: header: 0x24DF[0m
+D (15957) Messager: pack_id: 0x00003FC9[0m
+D (15961) Messager: event_base: PRC[0m
+D (15965) Messager: event_id: 0x04[0m
+D (15968) Messager: event_data_len: 0[0m
+D (15972) Messager: CRC16: 0xDE1D[0m
+[0;31mE (15973) Messager: packet 1 ACK timeout[0m
+D (15981) ledc: cur duty: 0; target: 4095, step: 1023, cycle: 1; scale: 1; dir: 1
+[0m
+D (15982) Messager: Send packet successfully in tx callback[0m
+D (15994) Messager: packet 1 send success[0m
+D (15999) Messager: Send packet successfully in tx callback[0m
+D (16003) Messager: packet 1 send success[0m
+D (16007) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c8[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (16020) Messager: Received PING packet from 48:27:e2:c9:15:c8, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (16036) Messager: header: 0x24DF[0m
+D (16040) Messager: pack_id: 0x00003FC9[0m
+D (16043) Messager: event_base: PRC[0m
+D (16047) Messager: event_id: 0x04[0m
+D (16051) Messager: event_data_len: 0[0m
+D (16054) Messager: CRC16: 0xDE1D[0m
+D (16059) Messager: Send packet successfully in tx callback[0m
+D (16063) Messager: packet 1 send success[0m
+D (16814) ledc: cur duty: 4095; target: 0, step: 1023, cycle: 1; scale: 1; dir: 0
+[0m
+D (16932) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c4[0m
+D (16933) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c4[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (16941) Messager: Received PING packet from 48:27:e2:c9:15:c4, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (16957) Messager: header: 0x24DF[0m
+D (16961) Messager: pack_id: 0x00003FC9[0m
+D (16965) Messager: event_base: PRC[0m
+D (16968) Messager: event_id: 0x04[0m
+D (16968) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9d:18[0m
+D (16979) Messager: event_data_len: 0[0m
+D (16982) Messager: CRC16: 0xDE1D[0m
+D (16987) Messager: Send packet successfully in tx callback[0m
+D (16991) Messager: packet 1 send success[0m
+D (16995) Messager: [parse_task] Received 19 bytes from 48:27:e2:d6:9d:18[0m
+[0;31mE (16998) Messager: packet 1 ACK timeout[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (17008) Messager: Send packet successfully in tx callback[0m
+D (17018) Messager: Received PING packet from 48:27:e2:d6:9d:18, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (17034) Messager: header: 0x24DF[0m
+D (17038) Messager: pack_id: 0x00003FC9[0m
+D (17042) Messager: event_base: PRC[0m
+D (17045) Messager: event_id: 0x04[0m
+D (17049) Messager: event_data_len: 0[0m
+D (17052) Messager: CRC16: 0xDE1D[0m
+D (17056) Messager: packet 1 send success[0m
+D (17061) Messager: Send packet successfully in tx callback[0m
+D (17066) Messager: packet 1 send success[0m
+D (17635) ledc: cur duty: 0; target: 4095, step: 1023, cycle: 1; scale: 1; dir: 1
+[0m
+D (18010) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c4[0m
+D (18010) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c4[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (18018) Messager: Received PING packet from 48:27:e2:c9:15:c4, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (18035) Messager: header: 0x24DF[0m
+D (18038) Messager: pack_id: 0x00003FC9[0m
+D (18042) Messager: event_base: PRC[0m
+D (18046) Messager: event_id: 0x04[0m
+D (18046) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9d:18[0m
+D (18056) Messager: event_data_len: 0[0m
+[0;31mE (18060) Messager: packet 1 ACK timeout[0m
+D (18065) Messager: CRC16: 0xDE1D[0m
+D (18066) Messager: Send packet successfully in tx callback[0m
+D (18074) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c8[0m
+D (18080) Messager: packet 1 send success[0m
+D (18086) Messager: Send packet successfully in tx callback[0m
+D (18090) Messager: packet 1 send success[0m
+D (18094) Messager: [parse_task] Received 19 bytes from 48:27:e2:d6:9d:18[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (18107) Messager: Received PING packet from 48:27:e2:d6:9d:18, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (18123) Messager: header: 0x24DF[0m
+D (18126) Messager: pack_id: 0x00003FC9[0m
+D (18130) Messager: event_base: PRC[0m
+D (18134) Messager: event_id: 0x04[0m
+D (18137) Messager: event_data_len: 0[0m
+D (18141) Messager: CRC16: 0xDE1D[0m
+D (18147) Messager: Send packet successfully in tx callback[0m
+D (18150) Messager: packet 1 send success[0m
+D (18154) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c8[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (18167) Messager: Received PING packet from 48:27:e2:c9:15:c8, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (18183) Messager: header: 0x24DF[0m
+D (18186) Messager: pack_id: 0x00003FC9[0m
+D (18190) Messager: event_base: PRC[0m
+D (18194) Messager: event_id: 0x04[0m
+D (18197) Messager: event_data_len: 0[0m
+D (18201) Messager: CRC16: 0xDE1D[0m
+D (18206) Messager: Send packet successfully in tx callback[0m
+D (18210) Messager: packet 1 send success[0m
+D (18455) ledc: cur duty: 4095; target: 0, step: 1023, cycle: 1; scale: 1; dir: 0
+[0m
+[0;31mE (19084) Messager: packet 1 ACK timeout[0m
+D (19085) Messager: Send packet successfully in tx callback[0m
+D (19086) Messager: packet 1 send success[0m
+D (19086) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c4[0m
+D (19094) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c4[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (19106) Messager: Received PING packet from 48:27:e2:c9:15:c4, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (19123) Messager: header: 0x24DF[0m
+D (19126) Messager: pack_id: 0x00003FC9[0m
+D (19128) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9d:18[0m
+D (19137) Messager: event_base: PRC[0m
+D (19140) Messager: event_id: 0x04[0m
+D (19144) Messager: event_data_len: 0[0m
+D (19148) Messager: CRC16: 0xDE1D[0m
+D (19152) Messager: Send packet successfully in tx callback[0m
+D (19157) Messager: packet 1 send success[0m
+D (19161) Messager: [parse_task] Received 19 bytes from 48:27:e2:d6:9d:18[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (19173) Messager: Received PING packet from 48:27:e2:d6:9d:18, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (19190) Messager: header: 0x24DF[0m
+D (19193) Messager: pack_id: 0x00003FC9[0m
+D (19197) Messager: event_base: PRC[0m
+D (19201) Messager: event_id: 0x04[0m
+D (19204) Messager: event_data_len: 0[0m
+D (19208) Messager: CRC16: 0xDE1D[0m
+D (19212) Messager: Send packet successfully in tx callback[0m
+D (19217) Messager: packet 1 send success[0m
+D (19276) ledc: cur duty: 0; target: 4095, step: 1023, cycle: 1; scale: 1; dir: 1
+[0m
+[0;31mE (20087) Messager: packet 1 ACK timeout[0m
+D (20088) Messager: Send packet successfully in tx callback[0m
+D (20089) Messager: packet 1 send success[0m
+D (20096) ledc: cur duty: 4095; target: 0, step: 1023, cycle: 1; scale: 1; dir: 0
+[0m
+D (20163) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c4[0m
+D (20164) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c4[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (20172) Messager: Received PING packet from 48:27:e2:c9:15:c4, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (20188) Messager: header: 0x24DF[0m
+D (20192) Messager: pack_id: 0x00003FC9[0m
+D (20195) Messager: event_base: PRC[0m
+D (20199) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9d:18[0m
+D (20206) Messager: event_id: 0x04[0m
+D (20209) Messager: event_data_len: 0[0m
+D (20213) Messager: CRC16: 0xDE1D[0m
+D (20218) Messager: Send packet successfully in tx callback[0m
+D (20222) Messager: packet 1 send success[0m
+D (20226) Messager: [parse_task] Received 19 bytes from 48:27:e2:d6:9d:18[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (20239) Messager: Received PING packet from 48:27:e2:d6:9d:18, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (20255) Messager: header: 0x24DF[0m
+D (20258) Messager: pack_id: 0x00003FC9[0m
+D (20262) Messager: event_base: PRC[0m
+D (20266) Messager: event_id: 0x04[0m
+D (20269) Messager: event_data_len: 0[0m
+D (20273) Messager: CRC16: 0xDE1D[0m
+D (20278) Messager: Send packet successfully in tx callback[0m
+D (20282) Messager: packet 1 send success[0m
+D (20918) ledc: cur duty: 0; target: 4095, step: 1023, cycle: 1; scale: 1; dir: 1
+[0m
+[0;31mE (21090) Messager: packet 1 ACK timeout[0m
+D (21091) Messager: Send packet successfully in tx callback[0m
+D (21092) Messager: packet 1 send success[0m
+D (21240) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c4[0m
+D (21241) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c4[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (21249) Messager: Received PING packet from 48:27:e2:c9:15:c4, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (21265) Messager: header: 0x24DF[0m
+D (21269) Messager: pack_id: 0x00003FC9[0m
+D (21273) Messager: event_base: PRC[0m
+D (21276) Messager: event_id: 0x04[0m
+D (21280) Messager: event_data_len: 0[0m
+D (21283) Messager: CRC16: 0xDE1D[0m
+D (21288) Messager: Send packet successfully in tx callback[0m
+D (21293) Messager: packet 1 send success[0m
+D (21738) ledc: cur duty: 4095; target: 0, step: 1023, cycle: 1; scale: 1; dir: 0
+[0m
+[0;31mE (22093) Messager: packet 1 ACK timeout[0m
+D (22094) Messager: Send packet successfully in tx callback[0m
+D (22095) Messager: packet 1 send success[0m
+D (22311) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c4[0m
+D (22311) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c4[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (22319) Messager: Received PING packet from 48:27:e2:c9:15:c4, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (22335) Messager: header: 0x24DF[0m
+D (22339) Messager: pack_id: 0x00003FC9[0m
+D (22343) Messager: event_base: PRC[0m
+D (22346) Messager: event_id: 0x04[0m
+D (22350) Messager: event_data_len: 0[0m
+D (22354) Messager: CRC16: 0xDE1D[0m
+D (22358) Messager: Send packet successfully in tx callback[0m
+D (22363) Messager: packet 1 send success[0m
+D (22559) ledc: cur duty: 0; target: 4095, step: 1023, cycle: 1; scale: 1; dir: 1
+[0m
+[0;31mE (23096) Messager: packet 1 ACK timeout[0m
+D (23097) Messager: Send packet successfully in tx callback[0m
+D (23098) Messager: packet 1 send success[0m
+D (23380) ledc: cur duty: 4095; target: 0, step: 1023, cycle: 1; scale: 1; dir: 0
+[0m
+D (23526) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c4[0m
+D (23526) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c4[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (23534) Messager: Received PING packet from 48:27:e2:c9:15:c4, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (23550) Messager: header: 0x24DF[0m
+D (23554) Messager: pack_id: 0x00003FC9[0m
+D (23558) Messager: event_base: PRC[0m
+D (23561) Messager: event_id: 0x04[0m
+D (23565) Messager: event_data_len: 0[0m
+D (23569) Messager: CRC16: 0xDE1D[0m
+D (23575) Messager: Send packet successfully in tx callback[0m
+D (23578) Messager: packet 1 send success[0m
+[0;31mE (24099) Messager: packet 1 ACK timeout[0m
+D (24100) Messager: Send packet successfully in tx callback[0m
+D (24101) Messager: packet 1 send success[0m
+D (24171) Messager: [rx_callback]Received 4 bytes from 48:27:e2:d6:9d:18[0m
+D (24172) Messager: [parse_task] Received 4 bytes from 48:27:e2:d6:9d:18[0m
+DATA: A6 F2 01 00 
+D (24175) Messager: header: 0xF2A6[0m
+D (24179) Messager: pack_id: 0x00000001[0m
+[0;31mE (24183) Messager: packet 1 ACK_FAIL received[0m
+D (24189) Messager: Send packet successfully in tx callback[0m
+D (24194) Messager: packet 1 send success[0m
+D (24200) ledc: cur duty: 0; target: 4095, step: 1023, cycle: 1; scale: 1; dir: 1
+[0m
+D (24264) Messager: [rx_callback]Received 4 bytes from 48:27:e2:d6:9d:18[0m
+D (24265) Messager: [parse_task] Received 4 bytes from 48:27:e2:d6:9d:18[0m
+DATA: A6 F2 01 00 
+D (24268) Messager: header: 0xF2A6[0m
+D (24272) Messager: pack_id: 0x00000001[0m
+[0;31mE (24276) Messager: packet 1 ACK_FAIL received[0m
+D (24285) Messager: Send packet successfully in tx callback[0m
+D (24287) Messager: packet 1 send success[0m
+D (24344) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9d:18[0m
+D (24344) Messager: [parse_task] Received 19 bytes from 48:27:e2:d6:9d:18[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (24352) Messager: Received PING packet from 48:27:e2:d6:9d:18, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (24368) Messager: header: 0x24DF[0m
+D (24372) Messager: pack_id: 0x00003FC9[0m
+D (24376) Messager: event_base: PRC[0m
+D (24379) Messager: event_id: 0x04[0m
+D (24383) Messager: event_data_len: 0[0m
+D (24387) Messager: CRC16: 0xDE1D[0m
+D (24393) Messager: [rx_callback]Received 4 bytes from 48:27:e2:d6:9d:18[0m
+D (24397) Messager: Send packet successfully in tx callback[0m
+D (24403) Messager: packet 1 send success[0m
+D (24407) Messager: [parse_task] Received 4 bytes from 48:27:e2:d6:9d:18[0m
+DATA: A6 F2 01 00 
+D (24415) Messager: header: 0xF2A6[0m
+D (24418) Messager: pack_id: 0x00000001[0m
+[0;31mE (24422) Messager: packet 1 ACK_FAIL received[0m
+D (24429) Messager: Send packet successfully in tx callback[0m
+D (24433) Messager: packet 1 send success[0m
+D (24514) Messager: [rx_callback]Received 4 bytes from 48:27:e2:d6:9d:18[0m
+D (24515) Messager: [parse_task] Received 4 bytes from 48:27:e2:d6:9d:18[0m
+DATA: A6 F2 01 00 
+D (24519) Messager: header: 0xF2A6[0m
+D (24522) Messager: pack_id: 0x00000001[0m
+[0;31mE (24526) Messager: packet 1 ACK_FAIL received[0m
+D (24533) Messager: Send packet successfully in tx callback[0m
+D (24537) Messager: packet 1 send success[0m
+D (24611) Messager: [rx_callback]Received 4 bytes from 48:27:e2:d6:9d:18[0m
+D (24612) Messager: [parse_task] Received 4 bytes from 48:27:e2:d6:9d:18[0m
+DATA: A6 F2 01 00 
+D (24616) Messager: header: 0xF2A6[0m
+D (24619) Messager: pack_id: 0x00000001[0m
+[0;31mE (24623) Messager: packet 1 ACK_FAIL received[0m
+D (24630) Messager: Send packet successfully in tx callback[0m
+D (24634) Messager: packet 1 send success[0m
+D (24696) Messager: [rx_callback]Received 4 bytes from 48:27:e2:d6:9d:18[0m
+D (24696) Messager: [parse_task] Received 4 bytes from 48:27:e2:d6:9d:18[0m
+DATA: A6 F2 01 00 
+D (24700) Messager: header: 0xF2A6[0m
+D (24703) Messager: pack_id: 0x00000001[0m
+[0;31mE (24707) Messager: packet 1 ACK_FAIL received[0m
+D (24714) Messager: Send packet successfully in tx callback[0m
+D (24718) Messager: packet 1 send success[0m
+D (24782) Messager: [rx_callback]Received 4 bytes from 48:27:e2:d6:9d:18[0m
+D (24783) Messager: [parse_task] Received 4 bytes from 48:27:e2:d6:9d:18[0m
+DATA: A6 F2 01 00 
+D (24787) Messager: header: 0xF2A6[0m
+D (24790) Messager: pack_id: 0x00000001[0m
+[0;31mE (24794) Messager: packet 1 ACK_FAIL received[0m
+D (24802) Messager: Send packet successfully in tx callback[0m
+D (24805) Messager: packet 1 send success[0m
+D (24840) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c8[0m
+D (24840) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c8[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (24848) Messager: Received PING packet from 48:27:e2:c9:15:c8, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (24865) Messager: header: 0x24DF[0m
+D (24868) Messager: pack_id: 0x00003FC9[0m
+D (24872) Messager: event_base: PRC[0m
+D (24876) Messager: event_id: 0x04[0m
+D (24879) Messager: event_data_len: 0[0m
+D (24883) Messager: CRC16: 0xDE1D[0m
+D (24888) Messager: Send packet successfully in tx callback[0m
+D (24892) Messager: [rx_callback]Received 4 bytes from 48:27:e2:d6:9d:18[0m
+D (24899) Messager: packet 1 send success[0m
+D (24903) Messager: [parse_task] Received 4 bytes from 48:27:e2:d6:9d:18[0m
+DATA: A6 F2 01 00 
+D (24911) Messager: header: 0xF2A6[0m
+D (24915) Messager: pack_id: 0x00000001[0m
+[0;31mE (24919) Messager: packet 1 ACK_FAIL received[0m
+D (24925) Messager: Send packet successfully in tx callback[0m
+D (24929) Messager: packet 1 send success[0m
+D (25025) ledc: cur duty: 4095; target: 0, step: 1023, cycle: 1; scale: 1; dir: 0
+[0m
+D (25308) Messager: [rx_callback]Received 4 bytes from 48:27:e2:d6:9d:18[0m
+D (25309) Messager: [parse_task] Received 4 bytes from 48:27:e2:d6:9d:18[0m
+DATA: A6 F2 02 00 
+D (25313) Messager: header: 0xF2A6[0m
+D (25316) Messager: pack_id: 0x00000002[0m
+[0;33mW (25320) Messager: ACK_FAIL packet 2 ID check failed, TX id updated to 1[0m
+[0;31mE (25328) Messager: packet 1 ACK_FAIL received[0m
+D (25334) Messager: Send packet successfully in tx callback[0m
+D (25338) Messager: packet 1 send success[0m
+D (25846) ledc: cur duty: 0; target: 4095, step: 1023, cycle: 1; scale: 1; dir: 1
+[0m
+D (25957) Messager: [rx_callback]Received 19 bytes from 48:27:e2:c9:15:c8[0m
+D (25957) Messager: [parse_task] Received 19 bytes from 48:27:e2:c9:15:c8[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (25966) Messager: Received PING packet from 48:27:e2:c9:15:c8, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (25982) Messager: header: 0x24DF[0m
+D (25985) Messager: pack_id: 0x00003FC9[0m
+D (25989) Messager: event_base: PRC[0m
+D (25993) Messager: event_id: 0x04[0m
+D (25996) Messager: event_data_len: 0[0m
+D (26000) Messager: CRC16: 0xDE1D[0m
+D (26005) Messager: Send packet successfully in tx callback[0m
+D (26009) Messager: packet 1 send success[0m
+[0;31mE (26342) Messager: packet 1 ACK timeout[0m
+[0;31mE (26358) Messager: Sending data to 48:27:e2:d6:9d:18 failed[0m
+[0;31mE (26359) Messager: packet 1 send error in tx callback, trial 1[0m
+[0;31mE (26376) Messager: Sending data to 48:27:e2:d6:9d:18 failed[0m
+[0;31mE (26377) Messager: packet 1 send error in tx callback, trial 2[0m
+[0;31mE (26379) Messager: packet 1 send failed[0m
+D (26667) ledc: cur duty: 4095; target: 0, step: 1023, cycle: 1; scale: 1; dir: 0
+[0m
+D (27487) ledc: cur duty: 0; target: 4095, step: 1023, cycle: 1; scale: 1; dir: 1
+[0m
+D (28308) ledc: cur duty: 4095; target: 0, step: 1023, cycle: 1; scale: 1; dir: 0
+[0m
+D (29128) ledc: cur duty: 0; target: 4095, step: 1023, cycle: 1; scale: 1; dir: 1
+[0m
+D (29949) ledc: cur duty: 4095; target: 0, step: 1023, cycle: 1; scale: 1; dir: 0
+[0m
+D (30769) ledc: cur duty: 0; target: 4095, step: 1023, cycle: 1; scale: 1; dir: 1
+[0m
+D (31124) Messager: [rx_callback]Received 19 bytes from 48:27:e2:d6:9d:18[0m
+D (31125) Messager: [parse_task] Received 19 bytes from 48:27:e2:d6:9d:18[0m
+DATA: DF 24 01 00 29 ED 50 52 41 00 06 00 04 FF 06 7F FF 7F 7F 
+D (31133) Messager: Received PING packet from 48:27:e2:d6:9d:18, sending RESPONSE packet[0m
+DATA: DF 24 C9 3F 00 00 50 52 43 00 00 00 04 
+DATA: DF 24 C9 3F 1D DE 50 52 43 00 00 00 04 
+D (31149) Messager: header: 0x24DF[0m
+D (31153) Messager: pack_id: 0x00003FC9[0m
+D (31157) Messager: event_base: PRC[0m
+D (31160) Messager: event_id: 0x04[0m
+D (31164) Messager: event_data_len: 0[0m
+D (31167) Messager: CRC16: 0xDE1D[0m
+D (31172) Messager: Send packet successfully in tx callback[0m
+D (31177) Messager: packet 2 send success[0m

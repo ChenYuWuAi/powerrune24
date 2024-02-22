@@ -14,7 +14,8 @@ const char *TAG = "Main";
  */
 void beacon_timeout(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-
+    // 失去连接灯效
+    led->set_mode(LED_MODE_ON, 1);
     // 开始空闲状态
     esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, NULL, 0, portMAX_DELAY);
     return;

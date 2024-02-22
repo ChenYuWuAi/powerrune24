@@ -504,7 +504,7 @@ static const esp_gatts_attr_db_t spp_gatt_db[SPP_IDX_NB] = {
 // 大符操作服务的属性表的相关全局变量
 // run
 static const uint16_t ops_run_uuid = UUID_RUN;
-static const u_int8_t ops_run_val[3] = {0};
+static const u_int8_t ops_run_val[4] = {0};
 static const uint8_t ops_run_ccc[1] = {0};
 // gpa
 static const uint16_t ops_gpa_uuid = UUID_GPA;

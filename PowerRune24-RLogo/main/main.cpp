@@ -151,8 +151,9 @@ void run_task(void *pvParameter)
     ESP_LOGI(TAG_MAIN, "Color : %s", value[0] ? "Blue" : "Red");
     ESP_LOGI(TAG_MAIN, "Mode : %s", value[1] ? "Small" : "Big");
     ESP_LOGI(TAG_MAIN, "Circulation : %s", value[2] ? "Enabled" : "Disabled");
+    ESP_LOGI(TAG_MAIN, "Direction : %s", value[3] ? "Clockwise" : "Anti-Clockwise");
     // 发送indicator日志
-    sprintf(log_string, "PowerRune Start with Color: %s, Mode: %s, Circulation %s.", value[0] ? "Blue" : "Red", value[1] ? "Small" : "Big", value[2] ? "Enabled" : "Disabled");
+    sprintf(log_string, "PowerRune Start with Color %s, Mode %s, Circulation %s, Direction %s.", value[0] ? "Blue" : "Red", value[1] ? "Small" : "Big", value[2] ? "Enabled" : "Disabled", value[3] ? "Clockwise" : "Anti-Clockwise");
     ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
 
     // 设置颜色
@@ -204,7 +205,7 @@ void run_task(void *pvParameter)
         };
         ESP_LOGI(TAG_MAIN, "Starting Armour...");
         sprintf(log_string, "Starting Armour...");
-        for (uint8_t i = 0; i < 1; i++) // TODO: 把这里改成已连接设备数
+        for (uint8_t i = 0; i < 5; i++) // TODO: 把这里改成已连接设备数
         {
             uint8_t expected_id = 1;
 
@@ -1099,6 +1100,17 @@ extern "C" void app_main(void)
     }
 
     ESP_LOGI(TAG_MAIN, "BLE Started.");
+
+    // 发送STOP到各设备以复位
+    PRM_STOP_EVENT_DATA stop_event_data;
+    esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
+    // 发送STOP到各装甲板设备
+    PRA_STOP_EVENT_DATA pra_stop_event_data;
+    for (uint8_t i = 0; i < 1; i++) // TODO: 改成5
+    {
+        pra_stop_event_data.address = i;
+        esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
+    }
 
     // PowerRune_Events
     // Register pra_start event handlers.

@@ -332,6 +332,8 @@ void PowerRune_Armour::global_pr_event_handler(void *handler_args, esp_event_bas
     }
     case PRA_COMPLETE_EVENT:
     {
+        blink();
+        break;
     }
     }
 }
