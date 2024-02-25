@@ -23,4 +23,4 @@ else()
 endif()
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(PowerRune24-RLogo)
+project(PowerRune24-Motor)

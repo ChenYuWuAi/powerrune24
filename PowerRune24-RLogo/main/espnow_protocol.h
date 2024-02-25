@@ -1,7 +1,7 @@
 /**
  * @file espnow_protocol.h
  * @brief ESP-NOW协议
- * @version 0.4
+ * @version 0.5
  * @date 2024-02-19
  * @note 用于ESP-NOW通信
  */
@@ -188,7 +188,7 @@ public:
     static const int SEND_ACK_FAIL_BIT = BIT4;    // 已发送，收到ACK_FAIL包，外部可读
     static const int SEND_BUSY = BIT5;            // 正在发送，外部可读，内部可用于判断是否接受ACK包
     static const int SEND_ACK_TIMEOUT_BIT = BIT6; // 已发送，等待ACK超时
-    static const int SEND_ACK_FAIL_ID_BIT = BIT4;    // 已发送，收到ACK_FAIL包，表示ID异常，外部可读
+    static const int SEND_ACK_FAIL_ID_BIT = BIT4; // 已发送，收到ACK_FAIL包，表示ID异常，外部可读
 
     static void rx_callback(const esp_now_recv_info_t *esp_now_info, const uint8_t *data, int len);
 
@@ -205,7 +205,7 @@ public:
     static void parse_data_task(void *pvParameter);
 
     // data_len为事件数据长度
-    static esp_err_t send_data(uint8_t *dest_mac, esp_event_base_t event_base, int32_t event_id, void *data, uint16_t data_len, uint8_t wait_ack = 1, uint8_t mutex = 1);
+    static esp_err_t send_data(uint8_t *dest_mac, esp_event_base_t event_base, int32_t event_id, void *data, uint16_t data_len, uint8_t wait_ack = 1, uint8_t mutex = 1, uint8_t id_plus = 1);
 
     static esp_err_t send_ACK(uint16_t packet_tx_id, uint8_t *dest_mac, PacketType type);
 

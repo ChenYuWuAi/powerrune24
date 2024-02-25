@@ -1,8 +1,8 @@
 /**
  * @file PowerRune_Events.h
  * @brief 大符事件库
- * @version 1.4
- * @date 2024-02-19
+ * @version 1.8
+ * @date 2024-02-24
  */
 #pragma once
 #include "firmware.h"
@@ -140,7 +140,7 @@ enum PRM_DIRECTION
 
 struct PRM_PING_EVENT_DATA
 {
-    uint8_t address;
+    uint8_t address = 0x05;
     uint8_t data_len = sizeof(PRM_PING_EVENT_DATA);
     PowerRune_Motor_config_info_t config_info;
 };
@@ -153,29 +153,33 @@ struct PRM_UNLOCK_EVENT_DATA
 
 struct PRM_UNLOCK_DONE_EVENT_DATA
 {
-    uint8_t address;
+    uint8_t address = 0x06;
     uint8_t data_len = sizeof(PRM_UNLOCK_DONE_EVENT_DATA);
     esp_err_t status;
 };
 
 struct PRM_START_EVENT_DATA
 {
-    uint8_t address;
+    uint8_t address = 0x05;
     uint8_t data_len = sizeof(PRM_START_EVENT_DATA);
     uint8_t mode = PRA_RUNE_BIG_MODE;
     uint8_t clockwise = PRM_DIRECTION_CLOCKWISE;
+    float amplitude = 1.045;
+    float omega = 1.884;
+    float offset = 1.045;
 };
 
 struct PRM_START_DONE_EVENT_DATA
 {
-    uint8_t address;
+    uint8_t address = 0x06;
     uint8_t data_len = sizeof(PRM_START_DONE_EVENT_DATA);
     esp_err_t status;
+    uint8_t mode;
 };
 
 struct PRM_SPEED_STABLE_EVENT_DATA
 {
-    uint8_t address;
+    uint8_t address = 0x06;
     uint8_t data_len = sizeof(PRM_SPEED_STABLE_EVENT_DATA);
 };
 
@@ -187,7 +191,7 @@ struct PRM_STOP_EVENT_DATA
 
 struct PRM_DISCONNECT_EVENT_DATA
 {
-    uint8_t address;
+    uint8_t address = 0x06;
     uint8_t data_len = sizeof(PRM_DISCONNECT_EVENT_DATA);
 };
 

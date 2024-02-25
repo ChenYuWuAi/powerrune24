@@ -1,8 +1,8 @@
 /**
  * @file firmware.cpp
  * @brief 固件类
- * @version 0.6
- * @date 2024-02-19
+ * @version 0.9
+ * @date 2024-02-25
  */
 #include "firmware.h"
 
@@ -181,12 +181,12 @@ esp_err_t Config::reset()
 #if CONFIG_POWERRUNE_TYPE == 2 // MOTORCTL
     // float Kp = 1.2, float Ki = 0.2, float Kd = 0.5, float Pmax = 1000, float Imax = 1000, float Dmax = 1000, float max = 2000
     config_info = {
-        .kp = 1.2,
-        .ki = 0.2,
-        .kd = 0.5,
+        .kp = 4.0,
+        .ki = 0.3,
+        .kd = 0.6,
         .i_max = 1000,
-        .d_max = 1000,
-        .out_max = 2000,
+        .d_max = 2000,
+        .out_max = 6000,
         .motor_num = 1,
         .auto_lock = 1,
     };
@@ -690,7 +690,7 @@ void Firmware::global_pr_event_handler(void *handler_arg, esp_event_base_t event
             // 如果是手动更新，则重启beacon，打开呼吸灯
             if (ota_complete_event_data->ota_type != 1)
             {
-                ESPNowProtocol::beacon_control(1);
+                // ESPNowProtocol::beacon_control(1);
                 led->set_mode(LED_MODE_FADE, 0);
             }
 
@@ -710,7 +710,7 @@ void Firmware::global_pr_event_handler(void *handler_arg, esp_event_base_t event
             ESP_LOGI(TAG_FIRMWARE, "OTA Triggered, starting OTA task...");
             uint8_t ota_restart = 0; // 表示不重启
 #else
-            ESPNowProtocol::beacon_control(0);
+            // ESPNowProtocol::beacon_control(0);
             uint8_t ota_restart = 2; // 表示重设ESP_NOW通道，回复更新状态后，重启
             ESP_LOGI(TAG_FIRMWARE, "OTA Triggered, starting OTA task...");
 #endif

@@ -338,7 +338,7 @@ void ota_task(void *pvParameter)
     ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
 
     // 发送STOP到所有设备
-    for (size_t i = 0; i < 1; i++) // TODO: 把这里改成已连接设备数
+    for (size_t i = 0; i < 5; i++) // TODO: 把这里改成已连接设备数
     {
         PRA_STOP_EVENT_DATA pra_stop_event_data;
         pra_stop_event_data.address = i;
@@ -357,7 +357,7 @@ void ota_task(void *pvParameter)
     assert(Firmware::ota_complete_queue != NULL);
     xEventGroupSetBits(Firmware::ota_event_group, Firmware::OTA_COMPLETE_LISTENING_BIT);
     // 命令各个设备开始OTA，先暂停ESP_NOW收发，然后重新启动ESP_NOW收发
-    for (size_t i = 0; i < 1; i++) // TODO: 把这里改成已连接设备数
+    for (size_t i = 0; i < 6; i++) // TODO: 把这里改成已连接设备数
     {
         // 字符串打印到log_string
         sprintf(log_string, "Triggering OTA for device %d", i);
@@ -367,7 +367,7 @@ void ota_task(void *pvParameter)
         // 等待ACK
         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     }
-    for (size_t i = 0; i < 1; i++) // TODO: 把这里改成已连接设备数
+    for (size_t i = 0; i < 6; i++) // TODO: 把这里改成已连接设备数
     {
         xQueueReceive(Firmware::ota_complete_queue, &ota_complete_event_data, portMAX_DELAY);
         esp_log_buffer_hex(TAG_MAIN, &ota_complete_event_data, sizeof(OTA_COMPLETE_EVENT_DATA));
@@ -458,7 +458,7 @@ void config_task(void *pvParameter)
         sprintf(log_string, "Sending configuration to motor device");
         ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[URL_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
         config_event_data.address = MOTOR;
-        esp_event_post_to(pr_events_loop_handle, PRM, CONFIG_EVENT, &config_event_data, sizeof(CONFIG_EVENT_DATA), portMAX_DELAY);
+        esp_event_post_to(pr_events_loop_handle, PRC, CONFIG_EVENT, &config_event_data, sizeof(CONFIG_EVENT_DATA), portMAX_DELAY);
         // 等待ACK
         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
         sprintf(log_string, "Configuration sent to motor device");
@@ -480,10 +480,9 @@ void reset_armour_id_task(void *pvParameter)
 // PowerRune_Events handles
 static void pra_stop(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-    // 停止空闲状态
-    vTaskSuspend(led_animation_task_handle);
-    led_strip->clear_pixels();
     vTaskResume(led_animation_task_handle);
+    // 发送重置通知
+    xTaskNotifyGive(led_animation_task_handle);
     return;
 }
 
@@ -509,6 +508,20 @@ void led_animation_task(void *pvParameter)
             // 只需要关闭第一个灯
             led_strip->set_color_index(sequence[i], 0, 0, 0);
             led_strip->refresh();
+            // 接受任务通知检查是否重置
+            if (ulTaskNotifyTake(pdTRUE, 0))
+            {
+                // 重置
+                i = 0;
+                led_strip->clear_pixels();
+                led_strip->refresh();
+            }
+            {
+                // 重置
+                i = 0;
+                led_strip->clear_pixels();
+                led_strip->refresh();
+            }
         }
     }
 }
@@ -972,9 +985,9 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             const uint8_t *value;
             esp_ble_gatts_get_attr_value(spp_handle_table[PID_VAL], &len, &value);
             // PID
-
-            memcpy(&config->get_config_motor_info_pt()->kp, value, sizeof(float));
-            memcpy(&config->get_config_motor_info_pt()->ki, value + sizeof(float), sizeof(float));
+            ESP_LOGI(TAG_BLE, "PID_val: %f, %f, %f, %f, %f, %f", *(float *)(value + 0), *(float *)(value + 1 * sizeof(float)), *(float *)(value + 2 * sizeof(float)), *(float *)(value + 3 * sizeof(float)), *(float *)(value + 4 * sizeof(float)), *(float *)(value + 5 * sizeof(float)));
+            memcpy(&config->get_config_motor_info_pt()->kp, value + 0, sizeof(float));
+            memcpy(&config->get_config_motor_info_pt()->ki, value + 1 * sizeof(float), sizeof(float));
             memcpy(&config->get_config_motor_info_pt()->kd, value + 2 * sizeof(float), sizeof(float));
             memcpy(&config->get_config_motor_info_pt()->i_max, value + 3 * sizeof(float), sizeof(float));
             memcpy(&config->get_config_motor_info_pt()->d_max, value + 4 * sizeof(float), sizeof(float));
@@ -1042,6 +1055,8 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_COMPLETE_EVENT, ESPNowProtocol::tx_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRM, PRM_START_EVENT, ESPNowProtocol::tx_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRM, PRM_UNLOCK_EVENT, ESPNowProtocol::tx_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRM, PRM_STOP_EVENT, ESPNowProtocol::tx_event_handler, NULL));
+
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, OTA_BEGIN_EVENT, Firmware::global_pr_event_handler, NULL));
 #endif
 #if CONFIG_POWERRUNE_TYPE == 0 // Armour
@@ -1104,22 +1119,92 @@ extern "C" void app_main(void)
     // 发送STOP到各设备以复位
     PRM_STOP_EVENT_DATA stop_event_data;
     esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
-    // 发送STOP到各装甲板设备
-    PRA_STOP_EVENT_DATA pra_stop_event_data;
-    for (uint8_t i = 0; i < 1; i++) // TODO: 改成5
-    {
-        pra_stop_event_data.address = i;
-        esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
-    }
 
     // PowerRune_Events
     // Register pra_start event handlers.
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_START_EVENT, pra_start, NULL));
     // Register pra_stop event handlers.
     ESP_ERROR_CHECK(esp_event_handler_instance_register(PRA, PRA_STOP_EVENT, pra_stop, NULL, NULL));
+    // 发送STOP到各装甲板设备
+    PRA_STOP_EVENT_DATA pra_stop_event_data;
+    for (uint8_t i = 0; i < 5; i++) // TODO: 改成5
+    {
+        pra_stop_event_data.address = i;
+        esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
+    }
+    // 电机停止
+    PRM_STOP_EVENT_DATA prm_stop_event_data;
+    esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
+    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
     // 启动LED动画，表示大符初始化完成
     xTaskCreate(led_animation_task, "led_animation_task", 2048, NULL, 5, &led_animation_task_handle);
+
+    // Unit Test, Post PRM_UNLOCK_EVENT
+    ESP_LOGI(TAG_MAIN, "posting PRM_UNLOCK_EVENT");
+    PRM_UNLOCK_EVENT_DATA unlock_data;
+    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_UNLOCK_EVENT, &unlock_data, sizeof(PRM_UNLOCK_EVENT_DATA), portMAX_DELAY));
+    // Unit Test, Post PRM_START_EVENT
+    ESP_LOGI(TAG_MAIN, "posting PRM_START_EVENT");
+    struct PRM_START_EVENT_DATA start_data = {
+        .mode = PRA_RUNE_SMALL_MODE,
+        .clockwise = PRM_DIRECTION_ANTICLOCKWISE,
+    };
+    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_START_EVENT, &start_data, sizeof(PRM_START_EVENT_DATA), portMAX_DELAY));
+    // Wait for 5S
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+    // Unit Test, Post PRM_STOP_EVENT
+    ESP_LOGI(TAG_MAIN, "posting PRM_STOP_EVENT");
+    PRM_STOP_EVENT_DATA stop_data;
+    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &stop_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY));
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+
+    // Unit Test, Post PRM_START_EVENT
+    ESP_LOGI(TAG_MAIN, "posting PRM_START_EVENT");
+    start_data = {
+        .mode = PRA_RUNE_SMALL_MODE,
+        .clockwise = PRM_DIRECTION_CLOCKWISE,
+    };
+    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_START_EVENT, &start_data, sizeof(PRM_START_EVENT_DATA), portMAX_DELAY));
+    // Wait for 5S
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+    // Unit Test, Post PRM_STOP_EVENT
+    ESP_LOGI(TAG_MAIN, "posting PRM_STOP_EVENT");
+    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &stop_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY));
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+
+    // Unit Test, Post PRM_START_EVENT
+    ESP_LOGI(TAG_MAIN, "posting PRM_START_EVENT");
+    start_data.mode = PRA_RUNE_BIG_MODE;
+    start_data.clockwise = PRM_DIRECTION_ANTICLOCKWISE;
+    // 数据全给正为逆时针
+    start_data.amplitude = 1.045;
+    start_data.omega = 1.884;
+    start_data.offset = 2.090 - start_data.amplitude;
+    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_START_EVENT, &start_data, sizeof(PRM_START_EVENT_DATA), portMAX_DELAY));
+
+    // Wait for 10S
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+    // Unit Test, Post PRM_STOP_EVENT
+    ESP_LOGI(TAG_MAIN, "posting PRM_STOP_EVENT");
+    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &stop_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY));
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+
+    // Unit Test, Post PRM_START_EVENT
+    ESP_LOGI(TAG_MAIN, "posting PRM_START_EVENT");
+    start_data.mode = PRA_RUNE_BIG_MODE;
+    start_data.clockwise = PRM_DIRECTION_CLOCKWISE;
+    // 数据全给正为逆时针
+    start_data.amplitude = 1.045;
+    start_data.omega = 1.884;
+    start_data.offset = 2.090 - start_data.amplitude;
+    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_START_EVENT, &start_data, sizeof(PRM_START_EVENT_DATA), portMAX_DELAY));
+
+    // Wait for 10S
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
 
     vTaskSuspend(NULL);
 }

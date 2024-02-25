@@ -34,8 +34,8 @@ Function List:  void task_motor(void *args)
 // #define DEBUG_NO_PID
 // #define DEBUG_NO_PID_CURRENT 250
 
-const char *TAG_TWAI = "TWAI";
-extern esp_event_loop_handle_t loop_PRM;
+const char *TAG_TWAI = "Motor";
+extern esp_event_loop_handle_t pr_events_loop_handle;
 
 // speed_trace_sin_info
 typedef struct
@@ -87,7 +87,7 @@ typedef struct
     uint32_t last_received;
 } motor_info_t;
 
-class Motor : PID
+class Motor : public PID
 {
 private:
     gpio_num_t TX_TWAI_GPIO;
@@ -147,7 +147,7 @@ private:
         tx_msg.data_length_code = 8;
         tx_msg.identifier = 0x200;
 
-        ESP_LOGI(TAG_TWAI, "Motor 1: %i, %i, %i, %i", current_info.iq1, current_info.iq2, current_info.iq3, current_info.iq4);
+        // ESP_LOGD(TAG_TWAI, "Motor 1: %i, %i, %i, %i", current_info.iq1, current_info.iq2, current_info.iq3, current_info.iq4);
         tx_msg.data[0] = current_info.iq1 >> 8;
         tx_msg.data[1] = current_info.iq1;
         tx_msg.data[2] = current_info.iq2 >> 8;
@@ -168,18 +168,22 @@ private:
         {
             if (motor_info[i].motor_status == MOTOR_NORMAL_PENDING)
             {
-                if (abs(motor_info[i].speed - motor_info[i].set_speed) < 100)
+                if (abs(motor_info[i].speed - motor_info[i].set_speed) < 50)
                 {
                     motor_info[i].motor_status = MOTOR_NORMAL;
                     ESP_LOGI(TAG_TWAI, "Motor %d speed stable.", motor_info[i].motor_id);
+                    PRM_SPEED_STABLE_EVENT_DATA speed_stable_data;
+                    esp_event_post_to(pr_events_loop_handle, PRM, PRM_SPEED_STABLE_EVENT, &speed_stable_data, sizeof(PRM_SPEED_STABLE_EVENT_DATA), portMAX_DELAY);
                 }
             }
             else if (motor_info[i].motor_status == MOTOR_TRACE_SIN_PENDING)
             {
-                if (abs(motor_info[i].speed - motor_info[i].set_speed) < 100)
+                if (abs(motor_info[i].speed - motor_info[i].set_speed) < 50)
                 {
                     motor_info[i].motor_status = MOTOR_TRACE_SIN_STABLE;
                     ESP_LOGI(TAG_TWAI, "Motor %d speed stable.", motor_info[i].motor_id);
+                    PRM_SPEED_STABLE_EVENT_DATA speed_stable_data;
+                    esp_event_post_to(pr_events_loop_handle, PRM, PRM_SPEED_STABLE_EVENT, &speed_stable_data, sizeof(PRM_SPEED_STABLE_EVENT_DATA), portMAX_DELAY);
                 };
             };
         };
@@ -189,7 +193,7 @@ public:
     /**
      * @brief 初始化电机, 需要在主函数手动设置motor_counts, TX和RX的IO口, PID初始化是否正确? 数据输入包含PID初始化
      */
-    Motor(uint8_t *motor_id, uint8_t motor_counts = 1, gpio_num_t TX_TWAI_GPIO = GPIO_NUM_4, gpio_num_t RX_TWAI_GPIO = GPIO_NUM_5, float Kp = 1.2, float Ki = 0.2, float Kd = 0.5, float Pmax = 1000, float Imax = 1000, float Dmax = 1000, float max = 2000) : PID(Kp, Ki, Kd, Pmax, Imax, Dmax, max)
+    Motor(uint8_t *motor_id, uint8_t motor_counts = 1, gpio_num_t TX_TWAI_GPIO = GPIO_NUM_4, gpio_num_t RX_TWAI_GPIO = GPIO_NUM_5, float Kp = 4, float Ki = 0.2, float Kd = 0.6, float Pmax = 2000, float Imax = 2000, float Dmax = 2000, float max = 6000) : PID(Kp, Ki, Kd, Pmax, Imax, Dmax, max)
     {
         this->motor_counts = motor_counts;
         motor_info = new motor_info_t[motor_counts];
@@ -244,17 +248,17 @@ public:
         for (size_t i = 0; i < motor_counts; i++)
         {
             ESP_ERROR_CHECK(set_id(i, motor_id[i]));
-            ESP_LOGI(TAG_TWAI, "Motor %d ID set to %d.\n", i, motor_id[i]);
+            ESP_LOGI(TAG_TWAI, "Motor %d ID set to %d.", i, motor_id[i]);
         }
 
         BaseType_t task_created = xTaskCreate(Motor::task_motor, "task_motor", 8192, this, 10, NULL);
         if (task_created == pdPASS)
         {
-            ESP_LOGI(TAG_TWAI, "TWAI task created.\n");
+            ESP_LOGI(TAG_TWAI, "TWAI task created.");
         }
         else
         {
-            ESP_LOGI(TAG_TWAI, "Failed to create TWAI task.\n");
+            ESP_LOGI(TAG_TWAI, "Failed to create TWAI task.");
         }
     }
 
@@ -280,14 +284,12 @@ public:
         {
             if (motor_info[i].motor_id == motor_id)
             {
-                // Return ESP_NOT_SUPPORTED when MOTOR_DISCONNECTED
-                if (motor_info[i].motor_status == MOTOR_DISCONNECTED)
-                    return ESP_ERR_NOT_SUPPORTED;
-
                 motor_info[i].motor_status = MOTOR_DISABLED;
-                ESP_LOGI(TAG_TWAI, "Motor %d unlocked.\n", motor_id);
+                ESP_LOGI(TAG_TWAI, "Motor %d unlocked.", motor_id);
+                // resume task
+                vTaskResume(xTaskGetHandle("task_motor"));
+                ret = ESP_OK;
                 break;
-                return ESP_OK;
             }
         }
         return ret;
@@ -307,8 +309,10 @@ public:
                 motor_info[i].current = 0;
                 motor_info[i].torque = 0;
                 motor_info[i].temp = 0;
-                motor_info[i].motor_status = MOTOR_DISABLED;
-                ESP_LOGI(TAG_TWAI, "Motor %d disabled.\n", i);
+                // PID reset
+                reset();
+                motor_info[i].motor_status = motor_info[i].motor_status == MOTOR_DISABLED_LOCKED ? MOTOR_DISABLED_LOCKED : MOTOR_DISABLED;
+                ESP_LOGI(TAG_TWAI, "Motor %d disabled.", i);
                 break;
             }
         }
@@ -326,31 +330,24 @@ public:
             {
                 if (motor_info[i].motor_status == MOTOR_DISABLED_LOCKED)
                 {
-                    ESP_LOGW(TAG_TWAI, "Motor %d is locked.\n", motor_id);
+                    ESP_LOGE(TAG_TWAI, "Motor %d is locked.", motor_id);
                     return ESP_ERR_NOT_SUPPORTED;
                 }
-                if (speed > 0)
-                {
-                    motor_info[i].motor_status = MOTOR_NORMAL_PENDING;
-                }
-                else
-                {
-                    motor_info[i].motor_status = MOTOR_DISABLED;
-                }
+                motor_info[i].motor_status = MOTOR_NORMAL_PENDING;
                 motor_info[i].set_speed = speed;
-                ESP_LOGI(TAG_TWAI, "Motor %d speed %d.\n", motor_id, speed);
+                ESP_LOGI(TAG_TWAI, "Motor %d speed %d.", motor_id, speed);
                 return ESP_OK;
             }
         }
         // cannot find motor_id
-        ESP_LOGI(TAG_TWAI, "Invalid ID.\n");
+        ESP_LOGI(TAG_TWAI, "Invalid ID.");
         return ESP_ERR_INVALID_ARG;
     };
 
     /**
      * @brief 设置电机速度跟踪正弦曲线, 如果电机状态为DISABLED_LOCKED, 则返回ESP_ERR_NOT_SUPPORTED
      */
-    esp_err_t set_speed_trace(uint8_t motor_id, float amplitude, float omega, float offset)
+    esp_err_t set_speed(uint8_t motor_id, float amplitude, float omega, float offset)
     {
         for (size_t i = 0; i < motor_counts; i++)
         {
@@ -358,7 +355,7 @@ public:
             {
                 if (motor_info[i].motor_status == MOTOR_DISABLED_LOCKED)
                 {
-                    ESP_LOGW(TAG_TWAI, "Motor %d is locked.\n", motor_id);
+                    ESP_LOGE(TAG_TWAI, "Motor %d is locked.", motor_id);
                     return ESP_ERR_NOT_SUPPORTED;
                 }
                 motor_info[i].speed_trace_sin_info.amplitude = amplitude;
@@ -366,12 +363,12 @@ public:
                 motor_info[i].speed_trace_sin_info.offset = offset;
                 motor_info[i].motor_status = MOTOR_TRACE_SIN_PENDING;
                 motor_info[i].speed_trace_sin_info.start_tick = xTaskGetTickCount();
-                ESP_LOGI(TAG_TWAI, "Motor %d speed trace sin: amplitude %f, omega %f, offset %f.\n", motor_id, amplitude, omega, offset);
+                ESP_LOGI(TAG_TWAI, "Motor %d speed trace sin: amplitude %f, omega %f, offset %f.", motor_id, amplitude, omega, offset);
                 return ESP_OK;
             }
         }
         // cannot find motor_id
-        ESP_LOGI(TAG_TWAI, "Invalid ID.\n");
+        ESP_LOGI(TAG_TWAI, "Invalid ID.");
         return ESP_ERR_INVALID_ARG;
     };
 
@@ -381,39 +378,6 @@ public:
     motor_status_t get_motor_status(uint8_t motor_id)
     {
         return motor_info[motor_id].motor_status;
-    };
-
-    /**
-     * @brief set motor status
-     */
-    esp_err_t set_motor_status(uint8_t motor_id, motor_status_t motor_status)
-    {
-        for (size_t i = 0; i < motor_counts; i++)
-        {
-            if (motor_info[i].motor_id == motor_id)
-            {
-                motor_info[i].motor_status = motor_status;
-                return ESP_OK;
-            };
-        };
-        return ESP_ERR_INVALID_ARG;
-    };
-
-    esp_err_t set_motor_status(uint8_t motor_id, float amplitude, float omega, float offset)
-    {
-        for (size_t i = 0; i < motor_counts; i++)
-        {
-            if (motor_info[i].motor_id == motor_id)
-            {
-                motor_info[i].speed_trace_sin_info.amplitude = amplitude;
-                motor_info[i].speed_trace_sin_info.omega = omega;
-                motor_info[i].speed_trace_sin_info.offset = offset;
-                motor_info[i].motor_status = MOTOR_TRACE_SIN_PENDING;
-                motor_info[i].speed_trace_sin_info.start_tick = xTaskGetTickCount();
-                return ESP_OK;
-            };
-        };
-        return ESP_ERR_INVALID_ARG;
     };
 
 protected:
@@ -427,8 +391,6 @@ protected:
     {
         static uint32_t current_tick = 0;
         current_tick = xTaskGetTickCount();
-        if (current_tick % 1000 == 0)
-            ESP_LOGI(TAG_TWAI, "Current tick: %lu", current_tick);
 
         twai_message_t twai_msg_re;
 
@@ -441,7 +403,7 @@ protected:
             for (size_t i = 0; i < motor_counts; i++)
             {
                 // update reveive time
-                motor_info[i].last_received = xTaskGetTickCount();
+                motor_info[i].last_received = current_tick;
                 if (motor_info[i].motor_id == motor_id)
                 {
                     motor_info[i].speed = (int16_t)(twai_msg_re.data[2] << 8 | twai_msg_re.data[3]);
@@ -453,8 +415,13 @@ protected:
                     {
                         motor_info[i].motor_status = MOTOR_DISABLED_LOCKED;
                     }
-                    // 按照一定的时间间隔打印电机状态
-                    ESP_LOGI(TAG_TWAI, "Motor %d State: Speed %d, Current %d, Temp %d .", motor_id, motor_info[i].speed, motor_info[i].current, motor_info[i].temp);
+                    // 按照一定的时间间隔打印电机状态，注意不可以用绝对值取模，应该用上一秒发送
+                    static uint32_t last_print = 0;
+                    if (motor_info[i].motor_status != MOTOR_DISABLED_LOCKED && current_tick - last_print > 1000)
+                    {
+                        ESP_LOGI(TAG_TWAI, "Motor %d State: Speed %d, Current %d, Temp %d .", motor_id, motor_info[i].speed, motor_info[i].current, motor_info[i].temp);
+                        last_print = current_tick;
+                    }
                 }
             }
         }
@@ -466,9 +433,11 @@ protected:
                 // check motor status
                 if (current_tick - motor_info[i].last_received > 1000)
                 {
-                    motor_info[i].motor_status = MOTOR_DISCONNECTED;
-                    esp_event_post_to(loop_PRM, PRM, PRM_DISCONNECT_EVENT, NULL, 0, portMAX_DELAY);
-                    ESP_LOGI(TAG_TWAI, "Motor %d disconnected.", motor_info[i].motor_id);
+                    motor_info[i].motor_status = MOTOR_DISABLED_LOCKED;
+                    esp_event_post_to(pr_events_loop_handle, PRM, PRM_DISCONNECT_EVENT, NULL, 0, portMAX_DELAY);
+                    ESP_LOGE(TAG_TWAI, "Motor %d disconnected.", motor_info[i].motor_id);
+                    // 暂停任务
+                    vTaskSuspend(NULL);
                 }
             }
         }
@@ -483,8 +452,6 @@ protected:
         Motor *motor_ctrl = (Motor *)args;
         current_info_t current_info;
         memset(&current_info, 0, sizeof(current_info_t));
-        // 服务缓启动
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
         float PID_CURRENT = 0;
 
         while (1)
@@ -530,10 +497,10 @@ protected:
             send_motor_current(current_info);
             vTaskDelay(2 / portTICK_PERIOD_MS);
             // LOG MOTOR_INFO_t
-            ESP_LOGI(TAG_TWAI, "Motor 1: %i, %i, %i, %i, %i, %i, %i", motor_info[0].set_speed, motor_info[0].speed, motor_info[0].current, motor_info[0].torque, motor_info[0].temp, motor_info[0].motor_id, motor_info[0].motor_status);
-        };
+            // ESP_LOGD(TAG_TWAI, "Motor 1: %i, %i, %i, %i, %i, %i, %i", motor_info[0].set_speed, motor_info[0].speed, motor_info[0].current, motor_info[0].torque, motor_info[0].temp, motor_info[0].motor_id, motor_info[0].motor_status);
+        }
         vTaskDelete(NULL);
-    };
+    }
 };
 
 motor_info_t *Motor::motor_info = NULL;

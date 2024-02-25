@@ -1,8 +1,8 @@
 /**
  * @file firmware.h
  * @brief 大符固件支持库，支持Flash Config读写、OTA升级
- * @version 1.2
- * @date 2024-02-19
+ * @version 1.3
+ * @date 2024-02-24
  */
 // FreeRTOS
 #pragma once
