@@ -9,6 +9,7 @@
 static const char *TAG_ARMOUR = "Armour";
 // 变量初始化
 LED_Strip *PowerRune_Armour::led_strip[5];
+SemaphoreHandle_t PowerRune_Armour::ISR_mutex = xSemaphoreCreateMutex();
 DEMUX PowerRune_Armour::demux_led = DEMUX(DEMUX_IO, DEMUX_IO_enable);
 TaskHandle_t PowerRune_Armour::LED_update_task_handle;
 SemaphoreHandle_t PowerRune_Armour::LED_Strip_FSM_Semaphore;
@@ -200,6 +201,9 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
 
 void IRAM_ATTR PowerRune_Armour::GPIO_ISR_handler(void *arg)
 {
+    // 操作过程中激活互斥锁
+    if (xSemaphoreTake(ISR_mutex, 0) == pdFALSE)
+        return;
     // 禁用所有GPIO中断
     for (uint8_t i = 0; i < 10; i++)
     {
@@ -208,9 +212,11 @@ void IRAM_ATTR PowerRune_Armour::GPIO_ISR_handler(void *arg)
     uint8_t io = (*(uint8_t *)arg);
     // 发送事件
     PRA_HIT_EVENT_DATA hit_event_data;
-    hit_event_data.address = config->get_config_info_pt()->armour_id;
+    hit_event_data.address = config->get_config_info_pt()->armour_id - 1;
     hit_event_data.score = io;
     esp_event_post_to(pr_events_loop_handle, PRA, PRA_HIT_EVENT, &hit_event_data, sizeof(PRA_HIT_EVENT_DATA), portMAX_DELAY);
+    // 释放互斥锁
+    xSemaphoreGive(ISR_mutex);
 }
 
 void PowerRune_Armour::GPIO_init()
@@ -264,6 +270,7 @@ PowerRune_Armour::PowerRune_Armour()
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_START_EVENT, global_pr_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, global_pr_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_STOP_EVENT, global_pr_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_COMPLETE_EVENT, global_pr_event_handler, NULL));
 }
 
 void PowerRune_Armour::trigger(RUNE_MODE mode, RUNE_COLOR color)

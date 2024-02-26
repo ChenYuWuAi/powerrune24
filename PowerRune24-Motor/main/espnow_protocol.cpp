@@ -104,8 +104,12 @@ void ESPNowProtocol::rx_callback(const esp_now_recv_info_t *esp_now_info, const 
         return;
     }
 
-    // // 比较MAC地址，如果不是自己的MAC地址或者广播地址，直接丢弃
+// // 比较MAC地址，如果不是自己的MAC地址或者广播地址，直接丢弃
+#if CONFIG_POWERRUNE_TYPE == 1 // 主设备
     if (memcmp(esp_now_info->des_addr, self_mac, ESP_NOW_ETH_ALEN) != 0 && memcmp(esp_now_info->des_addr, broadcast_mac, ESP_NOW_ETH_ALEN) != 0)
+#else
+    if (memcmp(esp_now_info->des_addr, self_mac, ESP_NOW_ETH_ALEN) != 0)
+#endif
     {
         ESP_LOGE(TAG_MESSAGER, "Receive cb MAC " MACSTR " error", MAC2STR(esp_now_info->des_addr));
         return;
@@ -705,8 +709,8 @@ void ESPNowProtocol::reset_id_PRA_HIT_handler(void *event_handler_arg,
         count++;
         n &= (n - 1);
     }
-    xEventGroupSetBits(reset_armour_id_data->event_group, 1 << pra_hit_event_data->address);
-    ESP_LOGD(TAG_MESSAGER, "[Reset ID] Hit bits: %i", (int)xEventGroupGetBits(reset_armour_id_data->event_group));
+    xEventGroupSetBits(reset_armour_id_data->event_group, 1 << pra_hit_event_data->address); // 0 1 2 3 4
+    ESP_LOGD(TAG_MESSAGER, "[Reset ID] Hit bits: %i, counts %i", (int)xEventGroupGetBits(reset_armour_id_data->event_group), count);
     // 写入新MAC
     memcpy(reset_armour_id_data->mac_addr_new + count, mac_addr[pra_hit_event_data->address], ESP_NOW_ETH_ALEN);
     // 写入新Config
@@ -841,6 +845,7 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
             espnow_DATA_pack_t packet = {0};
             memcpy(packet.event_base, received_data->data + 6, 4);
             packet.event_id = received_data->data[12];
+            packet.pack_id = (received_data->data[3] << 8) | received_data->data[2];
             log_packet(&packet);
             if (memcmp(packet.event_base, PRC, 4) != 0 || packet.event_id != RESPONSE_EVENT)
             {
@@ -863,8 +868,6 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
             memcpy(mac_addr, received_data->src_MAC, ESP_NOW_ETH_ALEN);
             // 更新ID
             packet_rx_id = packet.pack_id - 1;
-            // 发送ACK_OK
-            send_ACK(packet.pack_id, received_data->src_MAC, ACK_OK);
 #elif CONFIG_POWERRUNE_TYPE == 1 // RLOGO
             // 解包
             espnow_DATA_pack_t packet = {0};
@@ -1084,7 +1087,7 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
 
 #if CONFIG_POWERRUNE_TYPE == 1
     // 等待3s并清空队列，丢弃多余的PING包
-    while (xQueueReceive(espnow_rx_queue, received_data, 3000 / portTICK_PERIOD_MS) == pdTRUE)
+    while (xQueueReceive(espnow_rx_queue, received_data, 6000 / portTICK_PERIOD_MS) == pdTRUE)
     {
         free(received_data->data);
         send_data(received_data->src_MAC, PRC, RESPONSE_EVENT, NULL, 0, 0);

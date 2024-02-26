@@ -187,6 +187,8 @@ private:
     static LED_Strip *led_strip[5];
     // DEMUX初始化
     static DEMUX demux_led;
+    // ISR Mutex
+    static SemaphoreHandle_t ISR_mutex;
     // LED更新任务
     static void LED_update_task(void *pvParameter);
     // LED更新任务句柄
