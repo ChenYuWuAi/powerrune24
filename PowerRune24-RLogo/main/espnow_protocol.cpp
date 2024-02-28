@@ -7,17 +7,17 @@
  */
 
 #include "espnow_protocol.h"
-#include <unordered_map>
 
 // #define HEAPDEBUG
 
 static const char *TAG_MESSAGER = "Messager";
 static BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-
 // 初始化静态成员
 // espnow MAC地址
 #if CONFIG_POWERRUNE_TYPE == 1 // 主设备
 uint8_t ESPNowProtocol::mac_addr[6][ESP_NOW_ETH_ALEN] = {0};
+// 优化为哈希查找
+std::unordered_map<mac_address_t, uint8_t> ESPNowProtocol::mac_to_address_map;
 uint16_t ESPNowProtocol::packet_tx_id[6] = {0};
 uint16_t ESPNowProtocol::packet_rx_id[6] = {0};
 #elif ((CONFIG_POWERRUNE_TYPE == 2) || (CONFIG_POWERRUNE_TYPE == 0)) // 从设备
@@ -83,15 +83,27 @@ void ESPNowProtocol::log_raw_packet(const uint8_t *data, uint8_t len)
 #if CONFIG_POWERRUNE_TYPE == 1 // 主设备
 uint8_t ESPNowProtocol::mac_to_address(uint8_t *mac)
 {
-    // 线性查找
-    for (uint8_t i = 0; i < 6; i++)
+    // 哈希查找
+    mac_address_t mac_address;
+    memcpy(&mac_address, mac, ESP_NOW_ETH_ALEN);
+    if (mac_to_address_map.find(mac_address) != mac_to_address_map.end())
     {
-        if (memcmp(mac, mac_addr[i], ESP_NOW_ETH_ALEN) == 0)
-            return i;
+        return mac_to_address_map[mac_address];
     }
 
     return 0xFF;
 }
+
+void ESPNowProtocol::update_mac_to_address_map()
+{
+    mac_address_t mac_address;
+    for (uint8_t i = 0; i < 6; i++)
+    {
+        memcpy(&mac_address, mac_addr[i], ESP_NOW_ETH_ALEN);
+        mac_to_address_map[mac_address] = i;
+    }
+}
+
 #endif
 void ESPNowProtocol::rx_callback(const esp_now_recv_info_t *esp_now_info, const uint8_t *data, int len)
 {
@@ -467,7 +479,14 @@ esp_err_t ESPNowProtocol::send_data(uint8_t *dest_mac, esp_event_base_t event_ba
     log_raw_packet((uint8_t *)packet, 13 + data_len);
     // 申请ID
 #if CONFIG_POWERRUNE_TYPE == 1
-    packet->pack_id = id_plus ? ESPNowProtocol::packet_tx_id[mac_to_address(dest_mac)] + 1 : ESPNowProtocol::packet_tx_id[mac_to_address(dest_mac)];
+    uint8_t address = mac_to_address(dest_mac);
+    if (address == 0xFF)
+    {
+        ESP_LOGE(TAG_MESSAGER, "Failed to find address of " MACSTR, MAC2STR(dest_mac));
+        free(packet);
+        return ESP_FAIL;
+    }
+    packet->pack_id = id_plus ? ESPNowProtocol::packet_tx_id[address] + 1 : ESPNowProtocol::packet_tx_id[mac_to_address(dest_mac)];
 #else
     packet->pack_id = id_plus ? ESPNowProtocol::packet_tx_id + 1 : ESPNowProtocol::packet_tx_id;
 #endif
@@ -945,6 +964,7 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
                     {
                         ESP_LOGI(TAG_MESSAGER, "Peer added");
                         memcpy(mac_addr[packet.event_data[0]], received_data->src_MAC, ESP_NOW_ETH_ALEN);
+                        update_mac_to_address_map();
                     }
                     else
                     {
@@ -1109,8 +1129,8 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
     free(peer);
 
 #if CONFIG_POWERRUNE_TYPE == 1
-    // 等待3s并清空队列，丢弃多余的PING包
-    while (xQueueReceive(espnow_rx_queue, received_data, 6000 / portTICK_PERIOD_MS) == pdTRUE)
+    // 等待5s并清空队列，丢弃多余的PING包
+    while (xQueueReceive(espnow_rx_queue, received_data, 5000 / portTICK_PERIOD_MS) == pdTRUE)
     {
         free(received_data->data);
         send_data(received_data->src_MAC, PRC, RESPONSE_EVENT, NULL, 0, 0);

@@ -1,7 +1,7 @@
 /**
  * @file espnow_protocol.h
  * @brief ESP-NOW协议
- * @version 0.5
+ * @version 0.6
  * @date 2024-02-19
  * @note 用于ESP-NOW通信
  */
@@ -93,7 +93,10 @@ typedef struct
 {
     EventGroupHandle_t event_group;
     PowerRune_Armour_config_info_t *armour_config; // 大符配置信息数组首地址
-    uint8_t mac_addr_new[ESP_NOW_ETH_ALEN];
+    uint8_t mac_addr_new[5][ESP_NOW_ETH_ALEN];
+    // TXID, RXID
+    uint16_t tx_id_new[5];
+    uint16_t rx_id_new[5];
 } reset_armour_id_t;
 
 enum PacketType

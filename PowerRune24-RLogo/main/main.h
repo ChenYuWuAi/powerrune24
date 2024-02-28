@@ -54,6 +54,11 @@ extern esp_event_loop_handle_t pr_events_loop_handle;
 // Score Vector
 std::vector<uint8_t> score_vector;
 
+QueueHandle_t run_queue;
+// FreeRTOS计时器
+TimerHandle_t hit_timer;
+SemaphoreHandle_t motor_done_sem;
+
 void run_task(void *pvParameter);
 void ota_task(void *pvParameter);
 void beacon_timeout(void *handler_args, esp_event_base_t base, int32_t id, void *event_data);

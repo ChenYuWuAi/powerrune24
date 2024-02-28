@@ -38,7 +38,7 @@
 // OTA缓冲区大小 单位：字节
 #define OTA_BUF_SIZE 1024
 // OTA时清除flash
-#define ERASE_NVS_FLASH_WHEN_OTA
+// #define ERASE_NVS_FLASH_WHEN_OTA
 
 // Common Config
 struct PowerRune_Common_config_info_t

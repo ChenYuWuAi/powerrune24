@@ -6,7 +6,10 @@
  * @note 用于ESP-NOW通信
  */
 #pragma once
+#ifndef _ESPNOW_PROTOCOL_H_
+#define _ESPNOW_PROTOCOL_H_
 // ESP Common
+#include <unordered_map>
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
@@ -88,6 +91,11 @@ typedef struct
 
     uint8_t dest_mac[ESP_NOW_ETH_ALEN]; // MAC address of destination device.
 } ACK_FAIL_pack_t;                      // Size: 4 + 2 + 6 = 12Bytes
+typedef struct
+{
+    uint8_t mac[ESP_NOW_ETH_ALEN];
+} mac_address_t;
+#pragma pack()
 
 typedef struct
 {
@@ -116,7 +124,6 @@ enum PowerRune_Devices
     MOTOR,
     RLOGO,
 };
-
 /**
  * @brief ESP-NOW协议类
  * @note 用于ESP-NOW通信
@@ -132,10 +139,14 @@ private: // espnow 数据包队列
 // espnow MAC地址, 使用静态多态，对主控(收发6个设备, 5个ESP32S3[0:4], 1个ESP32C3[5])和从控(6个分设备发送)的MAC地址
 #if CONFIG_POWERRUNE_TYPE == 1 // 主设备
     static uint8_t mac_addr[6][ESP_NOW_ETH_ALEN];
+
+    // unordered map
+    static std::unordered_map<mac_address_t, uint8_t> mac_to_address_map;
     // 包ID，一方的TX_ID随包发送，原则上应该比对方的RX_ID大1，否则说明有包丢失
     static uint16_t packet_tx_id[6];
     static uint16_t packet_rx_id[6];
     static uint8_t mac_to_address(uint8_t *mac);
+    static void update_mac_to_address_map();
     static void reset_id_PRA_HIT_handler(void *event_handler_arg,
                                          esp_event_base_t event_base,
                                          int32_t event_id,
@@ -228,3 +239,4 @@ public:
     static esp_err_t reset_armour_id();
 #endif
 };
+#endif

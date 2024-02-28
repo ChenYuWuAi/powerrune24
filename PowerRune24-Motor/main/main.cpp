@@ -159,7 +159,8 @@ extern "C" void app_main(void)
     // register event PRM handler, transfer motor_3508 to handler_args
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRM, ESP_EVENT_ANY_ID, PRM_event_handler, &motor_3508));
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, ESP_EVENT_ANY_ID, PRM_event_handler, &motor_3508));
-
+    // LED闪烁
+    led->set_mode(LED_MODE_FADE, 1);
     /*
         Unit Test
         // Unit Test, Post PRM_UNLOCK_EVENT

@@ -191,6 +191,7 @@ private:
     static SemaphoreHandle_t ISR_mutex;
     // LED更新任务
     static void LED_update_task(void *pvParameter);
+    static void restart_ISR_task(void *pvParameter);
     // LED更新任务句柄
     static TaskHandle_t LED_update_task_handle;
     // 状态机更新信号量

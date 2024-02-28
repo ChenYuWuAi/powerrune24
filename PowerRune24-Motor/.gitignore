@@ -1,6 +1,7 @@
-/.devcontainer
-/.vscode
-/build
+/.vscode/
+/.devcontainer/
+/build/
 *.log
 *.old
-log.*
+*.lock
+*.log

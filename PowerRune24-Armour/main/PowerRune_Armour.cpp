@@ -9,7 +9,7 @@
 static const char *TAG_ARMOUR = "Armour";
 // 变量初始化
 LED_Strip *PowerRune_Armour::led_strip[5];
-SemaphoreHandle_t PowerRune_Armour::ISR_mutex = xSemaphoreCreateMutex();
+SemaphoreHandle_t PowerRune_Armour::ISR_mutex = xSemaphoreCreateBinary();
 DEMUX PowerRune_Armour::demux_led = DEMUX(DEMUX_IO, DEMUX_IO_enable);
 TaskHandle_t PowerRune_Armour::LED_update_task_handle;
 SemaphoreHandle_t PowerRune_Armour::LED_Strip_FSM_Semaphore;
@@ -39,6 +39,8 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
         {
         case LED_STRIP_IDLE:
             clear_armour();
+            // 启动ISR
+            // GPIO_ISR_enable();
             // 等待信号量
             xSemaphoreTake(LED_Strip_FSM_Semaphore, portMAX_DELAY);
             // 转移状态
@@ -49,7 +51,7 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
             clear_armour(false);
             config_info = config->get_config_info_pt();
             // 启动ISR
-            GPIO_ISR_enable();
+            // GPIO_ISR_enable();
             // 点亮靶状图案、上下装甲板，灯臂刷新一次
             demux_led = LED_STRIP_MAIN_ARMOUR;
             if (state_task.color == PR_RED)
@@ -128,6 +130,8 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
                 demux_led = LED_STRIP_MATRIX;
                 led_strip[LED_STRIP_MATRIX]->set_color(state_task.color == PR_RED ? config_info->brightness_proportion_matrix : 0, 0, state_task.color == PR_RED ? 0 : config_info->brightness_proportion_matrix);
                 led_strip[LED_STRIP_MATRIX]->refresh();
+                // 启动ISR
+                // GPIO_ISR_enable();
                 // 等待信号量
                 xSemaphoreTake(LED_Strip_FSM_Semaphore, portMAX_DELAY);
                 // 转移状态
@@ -147,6 +151,8 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
                 demux_led = LED_STRIP_MATRIX;
                 led_strip[LED_STRIP_MATRIX]->set_color(state_task.color == PR_RED ? config_info->brightness_proportion_matrix : 0, 0, state_task.color == PR_RED ? 0 : config_info->brightness_proportion_matrix);
                 led_strip[LED_STRIP_MATRIX]->refresh();
+                // 启动ISR
+                // GPIO_ISR_enable();
                 // 等待信号量
                 xSemaphoreTake(LED_Strip_FSM_Semaphore, portMAX_DELAY);
                 // 转移状态
@@ -157,7 +163,10 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
         }
         case LED_STRIP_BLINK:
         {
+            // 启动ISR
+            // GPIO_ISR_enable();
             config_info = config->get_config_info_pt();
+            // 按ID进行同步化延迟
             // UPPER，LOWER，MATRIX，ARM闪烁十次，MAIN_ARMOUR不闪烁
             for (uint8_t i = 0; i < 10; i++)
             {
@@ -201,22 +210,21 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
 
 void IRAM_ATTR PowerRune_Armour::GPIO_ISR_handler(void *arg)
 {
-    // 操作过程中激活互斥锁
+    // 操作过程中激活互斥锁，屏蔽其他中断
     if (xSemaphoreTake(ISR_mutex, 0) == pdFALSE)
         return;
     // 禁用所有GPIO中断
-    for (uint8_t i = 0; i < 10; i++)
-    {
-        gpio_set_intr_type(TRIGGER_IO[i], GPIO_INTR_DISABLE);
-    }
+    // for (uint8_t i = 0; i < 10; i++)
+    // {
+    //     gpio_set_intr_type(TRIGGER_IO[i], GPIO_INTR_DISABLE);
+    // }
     uint8_t io = (*(uint8_t *)arg);
     // 发送事件
     PRA_HIT_EVENT_DATA hit_event_data;
     hit_event_data.address = config->get_config_info_pt()->armour_id - 1;
     hit_event_data.score = io;
     esp_event_post_to(pr_events_loop_handle, PRA, PRA_HIT_EVENT, &hit_event_data, sizeof(PRA_HIT_EVENT_DATA), portMAX_DELAY);
-    // 释放互斥锁
-    xSemaphoreGive(ISR_mutex);
+    xTaskCreate(restart_ISR_task, "restart_ISR_task", 4096, NULL, 5, NULL);
 }
 
 void PowerRune_Armour::GPIO_init()
@@ -243,6 +251,15 @@ void PowerRune_Armour::GPIO_ISR_enable()
     }
 }
 
+void PowerRune_Armour::restart_ISR_task(void *pvParameter)
+{
+    // 屏蔽1s
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // 释放信号量
+    xSemaphoreGive(ISR_mutex);
+    vTaskDelete(NULL);
+}
+
 // Class PowerRune_Armour 定义
 PowerRune_Armour::PowerRune_Armour()
 {
@@ -254,6 +271,8 @@ PowerRune_Armour::PowerRune_Armour()
     {
         gpio_isr_handler_add(TRIGGER_IO[i], GPIO_ISR_handler, (void *)&TRIGGER_IO_TO_SCORE[i]);
     }
+
+    GPIO_ISR_enable();
     // 初始化LED_Strip
     led_strip[LED_STRIP_MAIN_ARMOUR] = new LED_Strip(STRIP_IO, 301);
     led_strip[LED_STRIP_UPPER] = new LED_Strip(STRIP_IO, 86);
@@ -263,6 +282,7 @@ PowerRune_Armour::PowerRune_Armour()
 
     // 状态机更新信号量
     LED_Strip_FSM_Semaphore = xSemaphoreCreateBinary();
+    xSemaphoreGive(ISR_mutex);
     // 创建LED更新任务
     xTaskCreate(LED_update_task, "LED_update_task", 8192, NULL, 5, &LED_update_task_handle);
 
@@ -324,7 +344,6 @@ void PowerRune_Armour::global_pr_event_handler(void *handler_args, esp_event_bas
         break;
     }
     case PRA_STOP_EVENT:
-
         stop();
         break;
     case PRA_HIT_EVENT:

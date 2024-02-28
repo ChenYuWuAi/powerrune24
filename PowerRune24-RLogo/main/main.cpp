@@ -4,11 +4,6 @@
  */
 #include "main.h"
 
-// ops服务
-int IS_PRM_SPEED_STABLE = 0;
-int IS_HIT = 0;
-int hitted_ID = 0;
-
 // 排序法生成不重复随机数列
 void generate_rand_sequence(uint8_t *rand_sequence, int length)
 {
@@ -61,7 +56,7 @@ void unlock_done_event_handler(void *handler_args, esp_event_base_t base, int32_
     // 发送indicator日志
     char log_string[25];
     sprintf(log_string, (data->status == ESP_OK) ? "Motor unlocked." : "Fail to unlock motor.");
-    ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
     // 释放信号量
     xSemaphoreGive(unlock_done_sem);
     // 自注销
@@ -72,7 +67,7 @@ void unlock_done_event_handler(void *handler_args, esp_event_base_t base, int32_
 void unlock_task(void *pvParameter)
 {
     char log_string[] = "Unlocking Motor...";
-    ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
 
     SemaphoreHandle_t unlock_done_sem = xSemaphoreCreateBinary();
     // 注册事件
@@ -90,6 +85,20 @@ void unlock_task(void *pvParameter)
 
 void stop_task(void *pvParameter)
 {
+    // 发送停止位
+    if (eTaskGetState(xTaskGetHandle("run_task")) == eTaskState::eRunning ||
+        eTaskGetState(xTaskGetHandle("run_task")) == eTaskState::eBlocked)
+    {
+        ESP_LOGI(TAG_MAIN, "Sending STOP to run_task");
+        if (hit_timer != NULL)
+            // stop timer
+            xTimerStop(hit_timer, portMAX_DELAY);
+        // run_queue
+        PRA_HIT_EVENT_DATA hit_done_data;
+        hit_done_data.address = 10;
+        if (run_queue != NULL)
+            xQueueSend(run_queue, &hit_done_data, portMAX_DELAY);
+    }
     // STOP
     char log_string[35] = "Stopping Armour...";
     PRA_STOP_EVENT_DATA pra_stop_event_data;
@@ -101,18 +110,17 @@ void stop_task(void *pvParameter)
         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     }
     sprintf(log_string, "Armour stopped, stopping motor");
-    ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[STOP_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[STOP_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
     // 发送STOP到PRM
     PRM_STOP_EVENT_DATA prm_stop_event_data;
     esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
     // 等待ACK
     xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     sprintf(log_string, "Motor stopped");
-    ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[STOP_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[STOP_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
+
     vTaskDelete(NULL);
 }
-
-QueueHandle_t hit_done_queue;
 
 // PRA_HIT_EVENT 事件处理函数
 void hit_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
@@ -126,7 +134,15 @@ void hit_event_handler(void *handler_args, esp_event_base_t base, int32_t id, vo
 void hit_timer_callback(TimerHandle_t xTimer)
 {
     PRA_HIT_EVENT_DATA hit_done_data;
-    xQueueSend(hit_done_queue, &hit_done_data, portMAX_DELAY);
+    xQueueSend(run_queue, &hit_done_data, portMAX_DELAY);
+}
+
+void prm_speed_stable_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
+{
+    SemaphoreHandle_t motor_done_sem = (SemaphoreHandle_t)handler_args;
+    // 释放信号量
+    xSemaphoreGive(motor_done_sem);
+    return;
 }
 
 /**
@@ -140,11 +156,14 @@ void run_task(void *pvParameter)
     // 随机数列
     uint8_t rune_start_sequence[5];
     char log_string[100];
+    // 事件队列
+    run_queue = xQueueCreate(5, sizeof(PRA_HIT_EVENT_DATA));
+    // FreeRTOS计时器
+    hit_timer = xTimerCreate("hit_timer", 2500 / portTICK_PERIOD_MS, pdFALSE, (void *)0, hit_timer_callback);
 
-    // PRA_HIT_EVENT等待队列
-    hit_done_queue = xQueueCreate(5, sizeof(PRA_HIT_EVENT_DATA));
-    TimerHandle_t hit_timer = xTimerCreate("hit_timer", 2500 / portTICK_PERIOD_MS, pdFALSE, (void *)0, hit_timer_callback);
-
+    // 电机信号量
+    motor_done_sem = xSemaphoreCreateBinary();
+    // 注册事件
     esp_ble_gatts_get_attr_value(ops_handle_table[RUN_VAL], &len, &value);
 
     ESP_LOGI(TAG_MAIN, "Run Triggered:");
@@ -154,7 +173,7 @@ void run_task(void *pvParameter)
     ESP_LOGI(TAG_MAIN, "Direction : %s", value[3] ? "Clockwise" : "Anti-Clockwise");
     // 发送indicator日志
     sprintf(log_string, "PowerRune Start with Color %s, Mode %s, Circulation %s, Direction %s.", value[0] ? "Blue" : "Red", value[1] ? "Small" : "Big", value[2] ? "Enabled" : "Disabled", value[3] ? "Clockwise" : "Anti-Clockwise");
-    ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
 
     // 设置颜色
     vTaskSuspend(led_animation_task_handle);
@@ -165,41 +184,75 @@ void run_task(void *pvParameter)
 
     led_strip->refresh();
 
-    ESP_LOGI(TAG_MAIN, "Starting Motor...");
-    sprintf(log_string, "Starting Motor...");
-    ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+    /* 生成随机速度参数
+   速度目标函数为： spd = a ∗ sin(𝜔𝜔 ∗ 𝑡𝑡) + 𝑏𝑏，其中 spd 的单位
+   为 rad/s， t 的单位为 s， a 的取值范围为 0.780~1.045，ω的取值范围为 1.884~2.000，
+   b 始终满足 b=2.090-a。每次大能量机关进入可激活状态时，所有参数重置，
+   其中 t 重置为 0， a 和ω重置为取值范围内任意值。*/
 
-    // // 启动并等待PRM稳定
-    // esp_event_post_to(pr_events_loop_handle, PRM, PRM_START_EVENT, NULL, 0, portMAX_DELAY);
-    // while (IS_PRM_SPEED_STABLE == 0)
-    // {
-    //     vTaskDelay(100 / portTICK_PERIOD_MS);
-    // }
+    PRM_START_EVENT_DATA prm_start_event_data;
+    prm_start_event_data.clockwise = value[3];
+    // 大符模式
+    if (value[1] == PRA_RUNE_BIG_MODE)
+    {
+        float a = (esp_random() % 266 + 780) / 1000.0;
+        float omega = (esp_random() % 116 + 1884) / 1000.0;
+        float b = 2.090 - a;
+        prm_start_event_data.mode = PRA_RUNE_BIG_MODE;
+        prm_start_event_data.amplitude = a;
+        prm_start_event_data.omega = omega;
+        prm_start_event_data.offset = b;
+        ESP_LOGI(TAG_MAIN, "Starting motor in SIN tracing, amp = %f, omega = %f, b = %f", prm_start_event_data.amplitude, prm_start_event_data.omega, prm_start_event_data.offset);
+        sprintf(log_string, "Starting motor in SIN tracing, amp = %f, omega = %f, b = %f", prm_start_event_data.amplitude, prm_start_event_data.omega, prm_start_event_data.offset);
+    }
+    else
+    {
+        prm_start_event_data.mode = PRA_RUNE_SMALL_MODE;
+        ESP_LOGI(TAG_MAIN, "Starting motor in constant speed mode");
+        sprintf(log_string, "Starting motor in constant speed mode");
+    }
+    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
+    // 注册事件
+    esp_event_handler_register_with(pr_events_loop_handle, PRM, PRM_SPEED_STABLE_EVENT, prm_speed_stable_event_handler, motor_done_sem);
+    // 启动并等待PRM稳定
+    esp_event_post_to(pr_events_loop_handle, PRM, PRM_START_EVENT, &prm_start_event_data, sizeof(PRM_START_EVENT_DATA), portMAX_DELAY);
+    // 等待ACK
+    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    // 等待信号量
+    xSemaphoreTake(motor_done_sem, portMAX_DELAY);
+    esp_event_handler_unregister_with(pr_events_loop_handle, PRM, PRM_SPEED_STABLE_EVENT, prm_speed_stable_event_handler);
+
     ESP_LOGI(TAG_MAIN, "Motor speed stable.");
     sprintf(log_string, "Motor speed stable.");
-    ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
-    // 注册事件
-    esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, hit_event_handler, hit_done_queue);
-    // 等待PRA_HIT_EVENT信号量
+    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
+
+    // 事件、等待PRA_HIT_EVENT信号量
+    esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, hit_event_handler, run_queue);
     PRA_HIT_EVENT_DATA hit_done_data;
     bool hit_state = 1; // 0: 未完成 1: 完成
     bool circulation = value[2];
-
+    uint8_t last_first_activation_armour = 0;
     do
     {
         uint8_t score = 0;
-        generate_rand_sequence(rune_start_sequence, 5);
+        do
+            generate_rand_sequence(rune_start_sequence, 5);
+        // 检测是否和上一次重复
+        while (rune_start_sequence[0] == last_first_activation_armour);
+
+        last_first_activation_armour = rune_start_sequence[0];
+
         // 打印随机数列
         ESP_LOGI(TAG_MAIN, "Rune Sequence: %i, %i, %i, %i, %i", rune_start_sequence[0], rune_start_sequence[1], rune_start_sequence[2], rune_start_sequence[3], rune_start_sequence[4]);
 
         // 发送indicator日志
         sprintf(log_string, "Rune Sequence: %i, %i, %i, %i, %i", rune_start_sequence[0], rune_start_sequence[1], rune_start_sequence[2], rune_start_sequence[3], rune_start_sequence[4]);
-        ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+        esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
 
         // 发送START事件
         PRA_START_EVENT_DATA pra_start_event_data = {
             .address = 0,
-            .data_len = 4,
+            .data_len = sizeof(PRA_START_EVENT_DATA),
             .mode = value[1],
             .color = value[0],
         };
@@ -207,7 +260,7 @@ void run_task(void *pvParameter)
         sprintf(log_string, "Starting Armour...");
         for (uint8_t i = 0; i < 5; i++) // TODO: 把这里改成已连接设备数
         {
-            uint8_t expected_id = 1;
+            uint8_t expected_id = rune_start_sequence[i];
 
             pra_start_event_data.address = expected_id - 1;
             esp_event_post_to(pr_events_loop_handle, PRA, PRA_START_EVENT, &pra_start_event_data, sizeof(PRA_START_EVENT_DATA), portMAX_DELAY);
@@ -216,7 +269,7 @@ void run_task(void *pvParameter)
             // 开启FreeRTOS计时器
             xTimerReset(hit_timer, portMAX_DELAY);
             xTimerStart(hit_timer, portMAX_DELAY);
-            xQueueReceive(hit_done_queue, &hit_done_data, portMAX_DELAY);
+            xQueueReceive(run_queue, &hit_done_data, portMAX_DELAY);
             // 关闭FreeRTOS计时器
             xTimerStop(hit_timer, portMAX_DELAY);
             if (hit_done_data.address != expected_id - 1)
@@ -227,48 +280,38 @@ void run_task(void *pvParameter)
                     ESP_LOGE(TAG_MAIN, "Timeout hit from armour %d, activation failed", expected_id);
                     sprintf(log_string, "Timeout hit from armour %d, activation failed", expected_id);
                     esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
+                    PRA_STOP_EVENT_DATA pra_stop_event_data;
                     // 发送STOP到所有已激活设备
-                    for (uint8_t j = 0; j <= i; j++)
+                    for (uint8_t j = i; j >= 0; j--)
                     {
-                        PRA_STOP_EVENT_DATA pra_stop_event_data;
-                        pra_stop_event_data.address = j; // TODO：这里应该是个数组
+                        pra_stop_event_data.address = rune_start_sequence[j] - 1; // TODO：这里应该是个数组
                         esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
                         // 等待ACK
                         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
                     }
-                    hit_state = 0;
+                    hit_state = 0; // 未完成
                     break;
                 }
-                else if (hit_done_data.address == 0)
+                else if (hit_done_data.address == 10)
                 {
                     // 收到PRA_STOP_EVENT，停止
                     ESP_LOGI(TAG_MAIN, "PRA_STOP_EVENT received, stopping");
                     sprintf(log_string, "PRA_STOP_EVENT received, stopping");
                     esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
                     circulation = 0;
-                    // 发送STOP到所有已激活设备
-                    for (uint8_t j = 0; j <= i; j++)
-                    {
-                        PRA_STOP_EVENT_DATA pra_stop_event_data;
-                        pra_stop_event_data.address = j; // TODO：这里应该是个数组
-                        esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
-                        // 等待ACK
-                        xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-                    }
                     hit_state = 0;
                     break;
                 }
-
                 else
                 {
                     ESP_LOGI(TAG_MAIN, "Mistaken hit from armour %d, expected %d", hit_done_data.address + 1, expected_id);
                     sprintf(log_string, "Mistaken hit from armour %d, expected %d", hit_done_data.address + 1, expected_id);
                     esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
                     // 发送STOP到所有已激活设备
-                    for (uint8_t j = 0; j <= i; j++)
+                    for (uint8_t j = i; j >= 0; j--)
                     {
                         PRA_STOP_EVENT_DATA pra_stop_event_data;
-                        pra_stop_event_data.address = j; // TODO：这里应该是个数组
+                        pra_stop_event_data.address = rune_start_sequence[j] - 1; // TODO：这里应该是个数组
                         esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
                         // 等待ACK
                         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
@@ -289,8 +332,8 @@ void run_task(void *pvParameter)
         if (hit_state)
         {
             score_vector.push_back(score);
-            ESP_LOGI(TAG_MAIN, "[Score: %d]PowerRune Activation Complete", score);
-            sprintf(log_string, "[Score: %d]PowerRune Activation Complete", score);
+            ESP_LOGI(TAG_MAIN, "[Score: %d]PowerRune Activated Successfully", score);
+            sprintf(log_string, "[Score: %d]PowerRune Activated Successfully", score);
             esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
             PRA_COMPLETE_EVENT_DATA pra_complete_event_data;
             for (uint8_t i = 0; i < 5; i++) // TODO: 把这里改成已连接设备数
@@ -300,28 +343,45 @@ void run_task(void *pvParameter)
                 // 等待ACK
                 xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
             }
-            // 等待灯效结束，开启下一轮
+            // 等待灯效结束，开启下一轮或者停止
             vTaskDelay(5000 / portTICK_PERIOD_MS);
+            // 清屏
+            // 发送STOP到所有已激活设备
+            PRA_STOP_EVENT_DATA pra_stop_event_data;
+            for (uint8_t j = 0; j < 5; j++)
+            {
+                pra_stop_event_data.address = rune_start_sequence[j] - 1; // TODO：这里应该是个数组
+                esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
+                // 等待ACK
+                xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+            }
         }
         else
         {
-            ESP_LOGI(TAG_MAIN, "PowerRune Activation Failed");
+            ESP_LOGW(TAG_MAIN, "PowerRune Activation Failed");
             sprintf(log_string, "PowerRune Activation Failed");
             esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
         }
+
+        hit_state = 1;
     } while (circulation);
+
+    ESP_LOGI(TAG_MAIN, "PowerRune Run Complete");
+    sprintf(log_string, "PowerRune Run Complete");
+    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
 
     // 恢复空闲状态
     led_strip->clear_pixels();
     vTaskResume(led_animation_task_handle);
+    xTaskNotifyGive(led_animation_task_handle);
     // 发送STOP到PRM
-    // PRM_STOP_EVENT_DATA prm_stop_event_data;
-    // esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
-    // // 等待ACK
-    // xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    PRM_STOP_EVENT_DATA prm_stop_event_data;
+    esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
+    // 等待ACK
+    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     // 注销事件、删除队列、删除计时器
     esp_event_handler_unregister_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, hit_event_handler);
-    vQueueDelete(hit_done_queue);
+    vQueueDelete(run_queue);
     xTimerDelete(hit_timer, portMAX_DELAY);
 
     vTaskDelete(NULL);
@@ -335,7 +395,7 @@ void ota_task(void *pvParameter)
     // 发送indicator日志
     char log_string[100] = "Starting OTA Operation";
 
-    ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
 
     // 发送STOP到所有设备
     for (size_t i = 0; i < 5; i++) // TODO: 把这里改成已连接设备数
@@ -346,10 +406,10 @@ void ota_task(void *pvParameter)
         // 等待ACK
         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     }
-    // PRM_STOP_EVENT_DATA prm_stop_event_data;
-    // esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
+    PRM_STOP_EVENT_DATA prm_stop_event_data;
+    esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
     // 等待ACK
-    // xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
     // 置位队列listening bit
     // 生成队列
@@ -361,7 +421,7 @@ void ota_task(void *pvParameter)
     {
         // 字符串打印到log_string
         sprintf(log_string, "Triggering OTA for device %d", i);
-        ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+        esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
         ota_begin_event_data.address = i;
         esp_event_post_to(pr_events_loop_handle, PRC, OTA_BEGIN_EVENT, &ota_begin_event_data, sizeof(OTA_BEGIN_EVENT_DATA), portMAX_DELAY);
         // 等待ACK
@@ -378,12 +438,12 @@ void ota_task(void *pvParameter)
             else
                 sprintf(log_string, "OTA for device %i failed [%s]", ota_complete_event_data.address, esp_err_to_name(ota_complete_event_data.status));
 
-            ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+            esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
         }
         else
         {
             sprintf(log_string, "OTA for device %i complete", ota_complete_event_data.address);
-            ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+            esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
         }
     }
     // 更新自己
@@ -393,7 +453,7 @@ void ota_task(void *pvParameter)
     led_strip->clear_pixels();
     led_strip->refresh();
     sprintf(log_string, "Starting OTA for PowerRune Server");
-    ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
 
     esp_event_post_to(pr_events_loop_handle, PRC, OTA_BEGIN_EVENT, &ota_begin_event_data, sizeof(OTA_BEGIN_EVENT_DATA), portMAX_DELAY);
     // 等待队列接收
@@ -406,12 +466,12 @@ void ota_task(void *pvParameter)
         else
             sprintf(log_string, "OTA for server failed [%s]", esp_err_to_name(ota_complete_event_data.status));
 
-        ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+        esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
     }
     else
     {
         sprintf(log_string, "OTA for server complete, ready for restart");
-        ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+        esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
     }
     led->set_mode(LED_MODE_FADE, 0);
     // 更新完成，准备重启
@@ -422,7 +482,7 @@ void ota_task(void *pvParameter)
     }
     vTaskResume(led_animation_task_handle);
     sprintf(log_string, "OTA operation complete");
-    ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
     xEventGroupClearBits(Firmware::ota_event_group, Firmware::OTA_COMPLETE_LISTENING_BIT);
     vQueueDelete(Firmware::ota_complete_queue);
     vTaskDelete(NULL);
@@ -439,7 +499,7 @@ void config_task(void *pvParameter)
     {
         // 发送notify，统一发送到URL_VAL
         sprintf(log_string, "Sending configuration to armour devices");
-        ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[URL_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+        esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[URL_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
         // 发送给所有装甲板设备
         for (uint8_t i = 0; i < 5; i++)
         {
@@ -450,19 +510,19 @@ void config_task(void *pvParameter)
             xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
         }
         sprintf(log_string, "Configuration sent to all armour devices");
-        ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[URL_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+        esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[URL_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
     }
     if (pvParameter == NULL || *(uint8_t *)pvParameter == MOTOR)
     {
         // 发送给电机设备
         sprintf(log_string, "Sending configuration to motor device");
-        ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[URL_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+        esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[URL_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
         config_event_data.address = MOTOR;
         esp_event_post_to(pr_events_loop_handle, PRC, CONFIG_EVENT, &config_event_data, sizeof(CONFIG_EVENT_DATA), portMAX_DELAY);
         // 等待ACK
         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
         sprintf(log_string, "Configuration sent to motor device");
-        ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[URL_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+        esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[URL_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
     }
     vTaskDelete(NULL);
 }
@@ -470,10 +530,10 @@ void config_task(void *pvParameter)
 void reset_armour_id_task(void *pvParameter)
 {
     char log_string[] = "Resetting Armour IDs";
-    ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[ARMOUR_ID_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[ARMOUR_ID_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
     ESPNowProtocol::reset_armour_id();
     sprintf(log_string, "Armour IDs reset");
-    ESP_ERROR_CHECK(esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[ARMOUR_ID_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false));
+    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[ARMOUR_ID_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
     vTaskDelete(NULL);
 }
 
@@ -500,7 +560,6 @@ void led_animation_task(void *pvParameter)
         {
             for (int j = 0; j < line_len; j++)
             {
-                // TODO：把亮度改成从Config中获取的
                 led_strip->set_color_index(sequence[(i + j) % sequence_len], config_rlogo->brightness, 0, 0);
             }
             led_strip->refresh();
@@ -510,12 +569,6 @@ void led_animation_task(void *pvParameter)
             led_strip->refresh();
             // 接受任务通知检查是否重置
             if (ulTaskNotifyTake(pdTRUE, 0))
-            {
-                // 重置
-                i = 0;
-                led_strip->clear_pixels();
-                led_strip->refresh();
-            }
             {
                 // 重置
                 i = 0;
@@ -1151,60 +1204,5 @@ extern "C" void app_main(void)
         .clockwise = PRM_DIRECTION_ANTICLOCKWISE,
     };
     ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_START_EVENT, &start_data, sizeof(PRM_START_EVENT_DATA), portMAX_DELAY));
-    // Wait for 5S
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
-
-    // Unit Test, Post PRM_STOP_EVENT
-    ESP_LOGI(TAG_MAIN, "posting PRM_STOP_EVENT");
-    PRM_STOP_EVENT_DATA stop_data;
-    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &stop_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY));
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
-
-    // Unit Test, Post PRM_START_EVENT
-    ESP_LOGI(TAG_MAIN, "posting PRM_START_EVENT");
-    start_data = {
-        .mode = PRA_RUNE_SMALL_MODE,
-        .clockwise = PRM_DIRECTION_CLOCKWISE,
-    };
-    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_START_EVENT, &start_data, sizeof(PRM_START_EVENT_DATA), portMAX_DELAY));
-    // Wait for 5S
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
-
-    // Unit Test, Post PRM_STOP_EVENT
-    ESP_LOGI(TAG_MAIN, "posting PRM_STOP_EVENT");
-    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &stop_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY));
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
-
-    // Unit Test, Post PRM_START_EVENT
-    ESP_LOGI(TAG_MAIN, "posting PRM_START_EVENT");
-    start_data.mode = PRA_RUNE_BIG_MODE;
-    start_data.clockwise = PRM_DIRECTION_ANTICLOCKWISE;
-    // 数据全给正为逆时针
-    start_data.amplitude = 1.045;
-    start_data.omega = 1.884;
-    start_data.offset = 2.090 - start_data.amplitude;
-    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_START_EVENT, &start_data, sizeof(PRM_START_EVENT_DATA), portMAX_DELAY));
-
-    // Wait for 10S
-    vTaskDelay(10000 / portTICK_PERIOD_MS);
-
-    // Unit Test, Post PRM_STOP_EVENT
-    ESP_LOGI(TAG_MAIN, "posting PRM_STOP_EVENT");
-    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &stop_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY));
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
-
-    // Unit Test, Post PRM_START_EVENT
-    ESP_LOGI(TAG_MAIN, "posting PRM_START_EVENT");
-    start_data.mode = PRA_RUNE_BIG_MODE;
-    start_data.clockwise = PRM_DIRECTION_CLOCKWISE;
-    // 数据全给正为逆时针
-    start_data.amplitude = 1.045;
-    start_data.omega = 1.884;
-    start_data.offset = 2.090 - start_data.amplitude;
-    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_START_EVENT, &start_data, sizeof(PRM_START_EVENT_DATA), portMAX_DELAY));
-
-    // Wait for 10S
-    vTaskDelay(10000 / portTICK_PERIOD_MS);
-
     vTaskSuspend(NULL);
 }

@@ -1,7 +1,7 @@
 /**
  * @file espnow_protocol.cpp
  * @brief ESP-NOW协议类定义，用于ESP-NOW通信
- * @version 1.5
+ * @version 1.6
  * @date 2024-02-24
  * @note 本文件存放ESP-NOW协议类的定义，Wifi硬件初始化，esp-now的发送和接收回调函数，事件处理
  */
@@ -698,23 +698,42 @@ void ESPNowProtocol::reset_id_PRA_HIT_handler(void *event_handler_arg,
     reset_armour_id_t *reset_armour_id_data = (reset_armour_id_t *)event_handler_arg;
     PRA_HIT_EVENT_DATA *pra_hit_event_data = (PRA_HIT_EVENT_DATA *)event_data;
     if (pra_hit_event_data->address > 4)
+    {
         ESP_LOGE(TAG_MESSAGER, "[Reset ID] Address %i out of range", pra_hit_event_data->address);
+        return;
+    }
 
     ESP_LOGI(TAG_MESSAGER, "[Reset ID] Hit event received from address %i", pra_hit_event_data->address);
 
     EventBits_t n = xEventGroupGetBits(reset_armour_id_data->event_group);
+    // 数已激活设备数
     uint8_t count = 0;
     while (n)
     {
         count++;
         n &= (n - 1);
     }
-    xEventGroupSetBits(reset_armour_id_data->event_group, 1 << pra_hit_event_data->address); // 0 1 2 3 4
-    ESP_LOGD(TAG_MESSAGER, "[Reset ID] Hit bits: %i, counts %i", (int)xEventGroupGetBits(reset_armour_id_data->event_group), count);
+    // 判断是否重复
+    if (xEventGroupGetBits(reset_armour_id_data->event_group) & (1 << pra_hit_event_data->address))
+    {
+        ESP_LOGW(TAG_MESSAGER, "[Reset ID] Hit event from address %i repeated", pra_hit_event_data->address);
+        // 更新ID
+        reset_armour_id_data->rx_id_new[count] = packet_rx_id[pra_hit_event_data->address];
+        reset_armour_id_data->tx_id_new[count] = packet_tx_id[pra_hit_event_data->address];
+        return;
+    }
     // 写入新MAC
     memcpy(reset_armour_id_data->mac_addr_new + count, mac_addr[pra_hit_event_data->address], ESP_NOW_ETH_ALEN);
     // 写入新Config
     memcpy(reset_armour_id_data->armour_config + count, config->get_config_armour_info_pt(pra_hit_event_data->address), sizeof(PowerRune_Armour_config_info_t));
+    reset_armour_id_data->armour_config[count].armour_id = count + 1; // 1 2 3 4 5
+    // 写入新ID
+    reset_armour_id_data->rx_id_new[count] = packet_rx_id[pra_hit_event_data->address];
+    reset_armour_id_data->tx_id_new[count] = packet_tx_id[pra_hit_event_data->address];
+    xEventGroupSetBits(reset_armour_id_data->event_group, 1 << pra_hit_event_data->address); // 0 1 2 3 4
+    ESP_LOGD(TAG_MESSAGER, "[Reset ID] Hit bits: %i, counts %i", (int)xEventGroupGetBits(reset_armour_id_data->event_group), count);
+    if (count == 4)
+        esp_event_handler_unregister_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, reset_id_PRA_HIT_handler);
 }
 
 esp_err_t ESPNowProtocol::reset_armour_id()
@@ -723,23 +742,22 @@ esp_err_t ESPNowProtocol::reset_armour_id()
     // return ESP_OK;
     ESP_LOGI(TAG_MESSAGER, "[Reset ID] Resetting PowerRune Armour ID...");
 
-    // 事件位
+    // 事件位和任务通知序列
     EventGroupHandle_t reset_armour_id_event_group = xEventGroupCreate();
     reset_armour_id_t reset_armour_id_data;
+    reset_armour_id_data.event_group = reset_armour_id_event_group;
     // 交换配置信息
     PowerRune_Armour_config_info_t *config_info = new PowerRune_Armour_config_info_t[5];
-    reset_armour_id_data.event_group = reset_armour_id_event_group;
     reset_armour_id_data.armour_config = config_info;
+
+    // 注册所需事件
+    esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_START_EVENT, tx_event_handler, NULL);
+    esp_event_handler_register_with(pr_events_loop_handle, PRC, CONFIG_EVENT, tx_event_handler, NULL);
+    esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_STOP_EVENT, tx_event_handler, NULL);
+    esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, reset_id_PRA_HIT_handler, &reset_armour_id_data);
 
     // 遍历address_old中的五个armour_id
     PRA_START_EVENT_DATA pra_start_event_data;
-    uint8_t mac_addr_old[6][ESP_NOW_ETH_ALEN];
-    memcpy(mac_addr_old, mac_addr, sizeof(mac_addr_old));
-
-    esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_START_EVENT, tx_event_handler, NULL);
-
-    // 注册所需事件
-    esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, reset_id_PRA_HIT_handler, &reset_armour_id_data);
     for (size_t i = 0; i < 5; i++)
     {
         pra_start_event_data.address = i;
@@ -748,21 +766,26 @@ esp_err_t ESPNowProtocol::reset_armour_id()
     }
     // 等待全部击中，0b11111
     xEventGroupWaitBits(reset_armour_id_event_group, 0b11111, pdTRUE, pdTRUE, portMAX_DELAY);
-    // 写入新MAC和新配置
+    ESP_LOGI(TAG_MESSAGER, "[Reset ID] All PowerRune Armour ID hit");
+    // 写入新MAC、新ID和新配置
     memcpy(mac_addr, reset_armour_id_data.mac_addr_new, 5 * ESP_NOW_ETH_ALEN);
+    memcpy(packet_rx_id, reset_armour_id_data.rx_id_new, 5 * sizeof(uint16_t));
+    memcpy(packet_tx_id, reset_armour_id_data.tx_id_new, 5 * sizeof(uint16_t));
+
+    CONFIG_EVENT_DATA pra_config_event_data;
+    memcpy(&pra_config_event_data.config_common_info, config->get_config_common_info_pt(), sizeof(PowerRune_Common_config_info_t));
+
     for (size_t i = 0; i < 5; i++)
     {
         memcpy(config->get_config_armour_info_pt(i), reset_armour_id_data.armour_config + i, sizeof(PowerRune_Armour_config_info_t));
-        // 发送CONFIG_EVENT
-        CONFIG_EVENT_DATA pra_config_event_data;
         pra_config_event_data.address = i;
-        memcpy(&pra_config_event_data.config_armour_info, config->get_config_armour_info_pt(i), sizeof(PowerRune_Armour_config_info_t));
-        memcpy(&pra_config_event_data.config_common_info, config->get_config_common_info_pt(), sizeof(PowerRune_Common_config_info_t));
-        esp_event_post_to(pr_events_loop_handle, PRA, CONFIG_EVENT, &pra_config_event_data, sizeof(CONFIG_EVENT_DATA), portMAX_DELAY);
+        memcpy(&pra_config_event_data.config_armour_info, reset_armour_id_data.armour_config + i, sizeof(PowerRune_Armour_config_info_t));
+        // 发送CONFIG_EVENT
+        esp_event_post_to(pr_events_loop_handle, PRC, CONFIG_EVENT, &pra_config_event_data, sizeof(CONFIG_EVENT_DATA), portMAX_DELAY);
         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     }
+
     ESP_LOGI(TAG_MESSAGER, "[Reset ID] PowerRune Armour ID reset done");
-    esp_event_handler_unregister_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, reset_id_PRA_HIT_handler);
     // 给所有设备发送PRA_STOP_EVENT
     PRA_STOP_EVENT_DATA pra_stop_event_data;
     for (size_t i = 0; i < 5; i++)
