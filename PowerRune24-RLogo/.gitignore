@@ -4,4 +4,4 @@
 *.log
 *.old
 *.lock
-*.log
+log.*
