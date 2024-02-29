@@ -17,14 +17,8 @@ static BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 #if CONFIG_POWERRUNE_TYPE == 1 // 主设备
 uint8_t ESPNowProtocol::mac_addr[6][ESP_NOW_ETH_ALEN] = {0};
 // 优化为哈希查找
-struct std::hash<mac_address_t>
-{
-    size_t operator()(const mac_address_t *mac) const
-    {
-        return esp_crc8_le(UINT8_MAX, (uint8_t *)mac, ESP_NOW_ETH_ALEN);
-    }
-};
-std::unordered_map<mac_address_t, uint8_t, std::hash<mac_address_t>> ESPNowProtocol::mac_to_address_map;
+
+std::unordered_map<mac_address_t, uint8_t, hash> ESPNowProtocol::mac_to_address_map;
 uint16_t ESPNowProtocol::packet_tx_id[6] = {0};
 uint16_t ESPNowProtocol::packet_rx_id[6] = {0};
 #elif ((CONFIG_POWERRUNE_TYPE == 2) || (CONFIG_POWERRUNE_TYPE == 0)) // 从设备
@@ -795,6 +789,7 @@ esp_err_t ESPNowProtocol::reset_armour_id()
     ESP_LOGI(TAG_MESSAGER, "[Reset ID] All PowerRune Armour ID hit");
     // 写入新MAC、新ID和新配置
     memcpy(mac_addr, reset_armour_id_data.mac_addr_new, 5 * ESP_NOW_ETH_ALEN);
+    update_mac_to_address_map();
     memcpy(packet_rx_id, reset_armour_id_data.rx_id_new, 5 * sizeof(uint16_t));
     memcpy(packet_tx_id, reset_armour_id_data.tx_id_new, 5 * sizeof(uint16_t));
 
@@ -1037,6 +1032,7 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
                     {
                         ESP_LOGI(TAG_MESSAGER, "Peer added");
                         memcpy(mac_addr[first_empty], received_data->src_MAC, ESP_NOW_ETH_ALEN);
+                        update_mac_to_address_map();
                     }
                     else
                     {
@@ -1073,6 +1069,7 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
                 {
                     ESP_LOGI(TAG_MESSAGER, "Peer added");
                     memcpy(mac_addr[MOTOR], received_data->src_MAC, ESP_NOW_ETH_ALEN);
+                    update_mac_to_address_map();
                 }
                 else
                 {

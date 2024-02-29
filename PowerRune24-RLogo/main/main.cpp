@@ -282,7 +282,7 @@ void run_task(void *pvParameter)
                     esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
                     PRA_STOP_EVENT_DATA pra_stop_event_data;
                     // 发送STOP到所有已激活设备
-                    for (uint8_t j = i; j >= 0; j--)
+                    for (int8_t j = i; j >= 0; j--)
                     {
                         pra_stop_event_data.address = rune_start_sequence[j] - 1; // TODO：这里应该是个数组
                         esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
@@ -308,7 +308,7 @@ void run_task(void *pvParameter)
                     sprintf(log_string, "Mistaken hit from armour %d, expected %d", hit_done_data.address + 1, expected_id);
                     esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
                     // 发送STOP到所有已激活设备
-                    for (uint8_t j = i; j >= 0; j--)
+                    for (int8_t j = i; j >= 0; j--)
                     {
                         PRA_STOP_EVENT_DATA pra_stop_event_data;
                         pra_stop_event_data.address = rune_start_sequence[j] - 1; // TODO：这里应该是个数组
