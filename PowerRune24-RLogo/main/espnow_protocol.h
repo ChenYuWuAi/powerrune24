@@ -94,6 +94,11 @@ typedef struct
 typedef struct
 {
     uint8_t mac[ESP_NOW_ETH_ALEN];
+    // overload operator==
+    bool operator==(const mac_address_t &other) const
+    {
+        return (memcmp(mac, other.mac, ESP_NOW_ETH_ALEN) == 0);
+    }
 } mac_address_t;
 #pragma pack()
 
@@ -141,7 +146,7 @@ private: // espnow 数据包队列
     static uint8_t mac_addr[6][ESP_NOW_ETH_ALEN];
 
     // unordered map
-    static std::unordered_map<mac_address_t, uint8_t> mac_to_address_map;
+    static std::unordered_map<mac_address_t, uint8_t, std::hash<mac_address_t>> mac_to_address_map;
     // 包ID，一方的TX_ID随包发送，原则上应该比对方的RX_ID大1，否则说明有包丢失
     static uint16_t packet_tx_id[6];
     static uint16_t packet_rx_id[6];

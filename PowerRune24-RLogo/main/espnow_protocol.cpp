@@ -17,7 +17,14 @@ static BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 #if CONFIG_POWERRUNE_TYPE == 1 // 主设备
 uint8_t ESPNowProtocol::mac_addr[6][ESP_NOW_ETH_ALEN] = {0};
 // 优化为哈希查找
-std::unordered_map<mac_address_t, uint8_t> ESPNowProtocol::mac_to_address_map;
+struct std::hash<mac_address_t>
+{
+    size_t operator()(const mac_address_t *mac) const
+    {
+        return esp_crc8_le(UINT8_MAX, (uint8_t *)mac, ESP_NOW_ETH_ALEN);
+    }
+};
+std::unordered_map<mac_address_t, uint8_t, std::hash<mac_address_t>> ESPNowProtocol::mac_to_address_map;
 uint16_t ESPNowProtocol::packet_tx_id[6] = {0};
 uint16_t ESPNowProtocol::packet_rx_id[6] = {0};
 #elif ((CONFIG_POWERRUNE_TYPE == 2) || (CONFIG_POWERRUNE_TYPE == 0)) // 从设备
