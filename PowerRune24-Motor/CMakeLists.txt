@@ -4,11 +4,11 @@ cmake_minimum_required(VERSION 3.16)
 
 set(DEBUG_VERSION "DebugMode")
 set(RELEASE_VERSION "ReleaseMode")
-set(COMPILE_MODE ${DEBUG_VERSION})            # 编译模式
+set(COMPILE_MODE ${RELEASE_VERSION})            # 编译模式
 string(TIMESTAMP COMPILE_TIME %y%m%d%H%M)        # 生成编译时间
-set(VERSION_MAJOR  0)    # 一级版本号
+set(VERSION_MAJOR  1)    # 一级版本号
 set(VERSION_MINOR  0)    # 二级版本号
-set(VERSION_LEVEL3 1)    # 三级版本号
+set(VERSION_LEVEL3 0)    # 三级版本号
 
 # Debug模式（目标：上一个版本号+编译时间）
 if(${COMPILE_MODE} MATCHES ${DEBUG_VERSION})

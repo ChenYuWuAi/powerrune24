@@ -1,35 +1,18 @@
-| Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C6 | ESP32-H2 | ESP32-S2 | ESP32-S3 |
-| ----------------- | ----- | -------- | -------- | -------- | -------- | -------- | -------- |
+# PowerRune24-Armour
 
-# _Sample project_
+## 项目简介
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+PowerRune24-Armour 是大能量机关项目中三大控制器之一，用于控制装甲板的状态。
 
-This is the simplest buildable example. The example is used by command `idf.py create-project`
-that copies the project to user specified path and set it's name. For more information follow the [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project)
+## 功能特性
 
+- 使用控制器：ESP32 S3
+- 支持两种装甲板模式：小能量机关模式和大能量机关模式
+- 移植了大符通用库：LED，LED_Strip，PowerRune_Event，PowerRune_Messenger，firmware库
 
+## 使用方法
 
-## How to use example
-We encourage the users to use the example as a template for the new projects.
-A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
-
-## Example folder contents
-
-The project **sample_project** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
-
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
-files that provide set of directives and instructions describing the project's source files and targets
-(executable, library, or both). 
-
-Below is short explanation of remaining files in the project folder.
-
-```
-├── CMakeLists.txt
-├── main
-│   ├── CMakeLists.txt
-│   └── main.c
-└── README.md                  This is the file you are currently reading
-```
-Additionally, the sample project contains Makefile and component.mk files, used for the legacy Make based build system. 
-They are not used or needed when building with CMake and idf.py.
+1. 硬件连接
+2. ESP-IDF 环境搭建
+3. 编译menuconfig，可以配置PowerRune_Configuration配置
+4. 编译后推送到pr_ota_bin项目，进行OTA升级，或者USB-JTAG下载

@@ -18,6 +18,7 @@
 #include "espnow_protocol.h"
 
 #define MATRIX_REFRESH_PERIOD 100
+#define BLINK_DELAY 100
 
 // GPIO定义
 // 扳机IO: 1 2 4 5 6 7 10 12 8 9

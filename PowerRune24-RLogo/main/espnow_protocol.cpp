@@ -1,8 +1,8 @@
 /**
  * @file espnow_protocol.cpp
  * @brief ESP-NOW协议类定义，用于ESP-NOW通信
- * @version 1.6
- * @date 2024-02-24
+ * @version 1.7
+ * @date 2024-0
  * @note 本文件存放ESP-NOW协议类的定义，Wifi硬件初始化，esp-now的发送和接收回调函数，事件处理
  */
 
@@ -17,8 +17,7 @@ static BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 #if CONFIG_POWERRUNE_TYPE == 1 // 主设备
 uint8_t ESPNowProtocol::mac_addr[6][ESP_NOW_ETH_ALEN] = {0};
 // 优化为哈希查找
-
-std::unordered_map<mac_address_t, uint8_t, hash> ESPNowProtocol::mac_to_address_map;
+// std::unordered_map<mac_address_t, uint8_t, hash> ESPNowProtocol::mac_to_address_map;
 uint16_t ESPNowProtocol::packet_tx_id[6] = {0};
 uint16_t ESPNowProtocol::packet_rx_id[6] = {0};
 #elif ((CONFIG_POWERRUNE_TYPE == 2) || (CONFIG_POWERRUNE_TYPE == 0)) // 从设备
@@ -84,25 +83,17 @@ void ESPNowProtocol::log_raw_packet(const uint8_t *data, uint8_t len)
 #if CONFIG_POWERRUNE_TYPE == 1 // 主设备
 uint8_t ESPNowProtocol::mac_to_address(uint8_t *mac)
 {
-    // 哈希查找
-    mac_address_t mac_address;
-    memcpy(&mac_address, mac, ESP_NOW_ETH_ALEN);
-    if (mac_to_address_map.find(mac_address) != mac_to_address_map.end())
-    {
-        return mac_to_address_map[mac_address];
-    }
+    // 顺序查找
+    for (uint8_t i = 0; i < 6; i++)
+        if (memcmp(mac, mac_addr + i, ESP_NOW_ETH_ALEN) == 0)
+            return i;
 
     return 0xFF;
 }
 
 void ESPNowProtocol::update_mac_to_address_map()
 {
-    mac_address_t mac_address;
-    for (uint8_t i = 0; i < 6; i++)
-    {
-        memcpy(&mac_address, mac_addr[i], ESP_NOW_ETH_ALEN);
-        mac_to_address_map[mac_address] = i;
-    }
+    return;
 }
 
 #endif
@@ -379,6 +370,7 @@ void ESPNowProtocol::parse_data_task(void *pvParameter)
             }
 #endif
             // 发送ACK_OK
+            xEventGroupSetBits(send_state, SEND_ACK_OK_BIT_INTERNAL);
             xEventGroupSetBits(send_state, SEND_ACK_OK_BIT);
 #if CONFIG_POWERRUNE_TYPE == 0 || CONFIG_POWERRUNE_TYPE == 2 // Armour || Motor
             // 视作beacon更新依据
@@ -461,8 +453,6 @@ esp_err_t ESPNowProtocol::send_data(uint8_t *dest_mac, esp_event_base_t event_ba
     data_len应该与事件数据结构体内的data_len一致，即事件结构体的大小
     */
 
-    // 清除ACK_OK和ACK_FAIL
-    xEventGroupClearBits(send_state, SEND_ACK_OK_BIT | SEND_ACK_FAIL_BIT);
     EventBits_t bits;
     // 编码包数据
     espnow_DATA_pack_t *packet = (espnow_DATA_pack_t *)malloc(sizeof(espnow_DATA_pack_t));
@@ -514,6 +504,8 @@ esp_err_t ESPNowProtocol::send_data(uint8_t *dest_mac, esp_event_base_t event_ba
             return ESP_FAIL;
         }
 
+        // 清除ACK_OK和ACK_FAIL
+        xEventGroupClearBits(send_state, SEND_ACK_OK_BIT_INTERNAL | SEND_ACK_FAIL_BIT);
         esp_err_t err = esp_now_send(dest_mac, (uint8_t *)packet, 13 + data_len);
         if (err != ESP_OK)
         {
@@ -528,7 +520,7 @@ esp_err_t ESPNowProtocol::send_data(uint8_t *dest_mac, esp_event_base_t event_ba
 
         if (bits & SEND_COMPLETE_BIT)
         {
-            ESP_LOGD(TAG_MESSAGER, "packet %i send success", packet->pack_id);
+            ESP_LOGD(TAG_MESSAGER, "packet %i send successfully to " MACSTR, packet->pack_id, MAC2STR(dest_mac));
             trial = 0; // 重置重传次数
 
             xEventGroupClearBits(send_state, SEND_COMPLETE_BIT);
@@ -560,9 +552,9 @@ esp_err_t ESPNowProtocol::send_data(uint8_t *dest_mac, esp_event_base_t event_ba
         }
 
         // 等待ACK_OK或ACK_FAIL，原则上只有一个线程在等待，所以不需考虑线程安全
-        bits = xEventGroupWaitBits(send_state, SEND_ACK_OK_BIT | SEND_ACK_FAIL_BIT | SEND_ACK_FAIL_ID_BIT, pdFALSE, pdFALSE, CONFIG_ESPNOW_TIMEOUT / portTICK_PERIOD_MS);
+        bits = xEventGroupWaitBits(send_state, SEND_ACK_OK_BIT_INTERNAL | SEND_ACK_FAIL_BIT | SEND_ACK_FAIL_ID_BIT, pdFALSE, pdFALSE, CONFIG_ESPNOW_TIMEOUT / portTICK_PERIOD_MS);
 
-        if (bits & SEND_ACK_OK_BIT)
+        if (bits & SEND_ACK_OK_BIT_INTERNAL)
         {
             ESP_LOGD(TAG_MESSAGER, "packet %i ACK_OK received", packet->pack_id);
 #if CONFIG_POWERRUNE_TYPE == 1
@@ -592,14 +584,14 @@ esp_err_t ESPNowProtocol::send_data(uint8_t *dest_mac, esp_event_base_t event_ba
         else
         {
             ESP_LOGE(TAG_MESSAGER, "packet %i ACK timeout", packet->pack_id);
-            xEventGroupClearBits(send_state, SEND_COMPLETE_BIT | SEND_ACK_PENDING_BIT | SEND_ACK_OK_BIT | SEND_ACK_FAIL_BIT);
+            xEventGroupClearBits(send_state, SEND_COMPLETE_BIT | SEND_ACK_PENDING_BIT | SEND_ACK_OK_BIT_INTERNAL | SEND_ACK_FAIL_BIT);
             // 重传
             continue;
         }
     }
     // 超时重传次数用完
     xEventGroupSetBits(send_state, SEND_ACK_TIMEOUT_BIT);
-    xEventGroupClearBits(send_state, SEND_COMPLETE_BIT | SEND_ACK_OK_BIT | SEND_ACK_FAIL_BIT);
+    xEventGroupClearBits(send_state, SEND_COMPLETE_BIT | SEND_ACK_OK_BIT_INTERNAL | SEND_ACK_FAIL_BIT);
     ESP_LOGE(TAG_MESSAGER, "packet %i send failed", packet->pack_id);
     free(packet);
     return ESP_FAIL;

@@ -1,8 +1,8 @@
 /**
  * @file espnow_protocol.h
  * @brief ESP-NOW协议
- * @version 0.6
- * @date 2024-02-19
+ * @version 0.7
+ * @date 2024-03-01
  * @note 用于ESP-NOW通信
  */
 #pragma once
@@ -91,15 +91,15 @@ typedef struct
 
     uint8_t dest_mac[ESP_NOW_ETH_ALEN]; // MAC address of destination device.
 } ACK_FAIL_pack_t;                      // Size: 4 + 2 + 6 = 12Bytes
-struct mac_address_t
-{
-    uint8_t mac[ESP_NOW_ETH_ALEN];
-    // overload operator==
-    bool operator==(const mac_address_t &other) const
-    {
-        return (memcmp(mac, other.mac, ESP_NOW_ETH_ALEN) == 0);
-    }
-};
+// struct mac_address_t
+// {
+//     uint8_t mac[ESP_NOW_ETH_ALEN];
+//     // overload operator==
+//     bool operator==(const mac_address_t &other) const
+//     {
+//         return (memcmp(mac, other.mac, ESP_NOW_ETH_ALEN) == 0);
+//     }
+// };
 #pragma pack()
 
 typedef struct
@@ -130,13 +130,13 @@ enum PowerRune_Devices
     RLOGO,
 };
 
-struct hash
-{
-    size_t operator()(const mac_address_t &mac) const
-    {
-        return esp_crc8_le(UINT8_MAX, (uint8_t *)&mac, ESP_NOW_ETH_ALEN);
-    }
-};
+// struct hash
+// {
+//     size_t operator()(const mac_address_t &mac) const
+//     {
+//         return esp_crc8_le(UINT8_MAX, (uint8_t *)&mac, ESP_NOW_ETH_ALEN);
+//     }
+// };
 
 /**
  * @brief ESP-NOW协议类
@@ -155,7 +155,7 @@ private: // espnow 数据包队列
     static uint8_t mac_addr[6][ESP_NOW_ETH_ALEN];
 
     // unordered map
-    static std::unordered_map<mac_address_t, uint8_t, hash> mac_to_address_map;
+    // static std::unordered_map<mac_address_t, uint8_t, hash> mac_to_address_map;
     // 包ID，一方的TX_ID随包发送，原则上应该比对方的RX_ID大1，否则说明有包丢失
     static uint16_t packet_tx_id[6];
     static uint16_t packet_rx_id[6];
@@ -203,6 +203,7 @@ private: // espnow 数据包队列
     static const int SEND_COMPLETE_BIT = BIT0;    // 已发送，正在等待ACK，内部使用
     static const int SEND_FAIL_BIT = BIT1;        // 发送失败（未传出），内部使用
     static const int SEND_ACK_PENDING_BIT = BIT2; // 已发送，等待ACK，内部使用
+    static const int SEND_ACK_OK_BIT_INTERNAL = BIT3; // 已发送，等待ACK，内部使用
 
 public:
     // 自身MAC
@@ -212,11 +213,11 @@ public:
     // 发送数据EventBits
     static EventGroupHandle_t send_state;
     // 先置位BUSY，然后发送数据，发送完成置位COMPLETE，等待ACK，收到ACK后置位OK，超时重传，清除BUSY和COMPLETE
-    static const int SEND_ACK_OK_BIT = BIT3;      // 已发送，收到ACK_OK包，外部可读
-    static const int SEND_ACK_FAIL_BIT = BIT4;    // 已发送，收到ACK_FAIL包，外部可读
-    static const int SEND_BUSY = BIT5;            // 正在发送，外部可读，内部可用于判断是否接受ACK包
-    static const int SEND_ACK_TIMEOUT_BIT = BIT6; // 已发送，等待ACK超时
-    static const int SEND_ACK_FAIL_ID_BIT = BIT4; // 已发送，收到ACK_FAIL包，表示ID异常，外部可读
+    static const int SEND_ACK_OK_BIT = BIT4;      // 已发送，收到ACK_OK包，外部可读
+    static const int SEND_ACK_FAIL_BIT = BIT5;    // 已发送，收到ACK_FAIL包，外部可读
+    static const int SEND_BUSY = BIT6;            // 正在发送，外部可读，内部可用于判断是否接受ACK包
+    static const int SEND_ACK_TIMEOUT_BIT = BIT7; // 已发送，等待ACK超时
+    static const int SEND_ACK_FAIL_ID_BIT = BIT8; // 已发送，收到ACK_FAIL包，表示ID异常，外部可读
 
     static void rx_callback(const esp_now_recv_info_t *esp_now_info, const uint8_t *data, int len);
 

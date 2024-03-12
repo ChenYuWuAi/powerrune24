@@ -39,8 +39,7 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
         {
         case LED_STRIP_IDLE:
             clear_armour();
-            // 启动ISR
-            // GPIO_ISR_enable();
+
             // 等待信号量
             xSemaphoreTake(LED_Strip_FSM_Semaphore, portMAX_DELAY);
             // 转移状态
@@ -50,8 +49,7 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
         {
             clear_armour(false);
             config_info = config->get_config_info_pt();
-            // 启动ISR
-            // GPIO_ISR_enable();
+
             // 点亮靶状图案、上下装甲板，灯臂刷新一次
             demux_led = LED_STRIP_MAIN_ARMOUR;
             if (state_task.color == PR_RED)
@@ -130,8 +128,6 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
                 demux_led = LED_STRIP_MATRIX;
                 led_strip[LED_STRIP_MATRIX]->set_color(state_task.color == PR_RED ? config_info->brightness_proportion_matrix : 0, 0, state_task.color == PR_RED ? 0 : config_info->brightness_proportion_matrix);
                 led_strip[LED_STRIP_MATRIX]->refresh();
-                // 启动ISR
-                // GPIO_ISR_enable();
                 // 等待信号量
                 xSemaphoreTake(LED_Strip_FSM_Semaphore, portMAX_DELAY);
                 // 转移状态
@@ -151,8 +147,6 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
                 demux_led = LED_STRIP_MATRIX;
                 led_strip[LED_STRIP_MATRIX]->set_color(state_task.color == PR_RED ? config_info->brightness_proportion_matrix : 0, 0, state_task.color == PR_RED ? 0 : config_info->brightness_proportion_matrix);
                 led_strip[LED_STRIP_MATRIX]->refresh();
-                // 启动ISR
-                // GPIO_ISR_enable();
                 // 等待信号量
                 xSemaphoreTake(LED_Strip_FSM_Semaphore, portMAX_DELAY);
                 // 转移状态
@@ -163,10 +157,10 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
         }
         case LED_STRIP_BLINK:
         {
-            // 启动ISR
-            // GPIO_ISR_enable();
+
             config_info = config->get_config_info_pt();
-            // 按ID进行同步化延迟
+            // 按ID进行同步化延迟，如1号装甲板延迟500ms，2号装甲板延迟400ms，3号装甲板延迟300ms，4号装甲板延迟200ms，5号装甲板延迟100ms
+            vTaskDelay((BLINK_DELAY * (6 - config_info->armour_id)) / portTICK_PERIOD_MS);
             // UPPER，LOWER，MATRIX，ARM闪烁十次，MAIN_ARMOUR不闪烁
             for (uint8_t i = 0; i < 10; i++)
             {
@@ -213,11 +207,6 @@ void IRAM_ATTR PowerRune_Armour::GPIO_ISR_handler(void *arg)
     // 操作过程中激活互斥锁，屏蔽其他中断
     if (xSemaphoreTake(ISR_mutex, 0) == pdFALSE)
         return;
-    // 禁用所有GPIO中断
-    // for (uint8_t i = 0; i < 10; i++)
-    // {
-    //     gpio_set_intr_type(TRIGGER_IO[i], GPIO_INTR_DISABLE);
-    // }
     uint8_t io = (*(uint8_t *)arg);
     // 发送事件
     PRA_HIT_EVENT_DATA hit_event_data;

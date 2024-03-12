@@ -21,32 +21,6 @@ void generate_rand_sequence(uint8_t *rand_sequence, int length)
     }
 }
 
-/**
- * @brief PRA_START_EVENT 事件处理函数
- * @note 事件处理函数，仅做打印事件数据
-
-*/
-static void pra_start(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
-{
-    PRA_START_EVENT_DATA *data = (PRA_START_EVENT_DATA *)event_data;
-    // 打印事件数据
-    ESP_LOGI(TAG_MAIN, "PRA_START_EVENT: address = %d, data_len = %d", data->address, data->data_len);
-    ESP_LOGI(TAG_MAIN, "PRA_START_EVENT: mode = %d, color = %d", data->mode, data->color);
-
-    // 停止空闲状态
-    vTaskSuspend(led_animation_task_handle);
-    if (data->color == 0)
-    {
-        led_strip->set_color(config->get_config_info_pt()->brightness, 0, 0);
-    }
-    else
-    {
-        led_strip->set_color(0, 0, config->get_config_info_pt()->brightness);
-    }
-    led_strip->refresh();
-    return;
-}
-
 void unlock_done_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
     SemaphoreHandle_t unlock_done_sem = (SemaphoreHandle_t)handler_args;
@@ -86,19 +60,22 @@ void unlock_task(void *pvParameter)
 void stop_task(void *pvParameter)
 {
     // 发送停止位
-    if (eTaskGetState(xTaskGetHandle("run_task")) == eTaskState::eRunning ||
-        eTaskGetState(xTaskGetHandle("run_task")) == eTaskState::eBlocked)
-    {
-        ESP_LOGI(TAG_MAIN, "Sending STOP to run_task");
-        if (hit_timer != NULL)
-            // stop timer
-            xTimerStop(hit_timer, portMAX_DELAY);
-        // run_queue
-        PRA_HIT_EVENT_DATA hit_done_data;
-        hit_done_data.address = 10;
-        if (run_queue != NULL)
-            xQueueSend(run_queue, &hit_done_data, portMAX_DELAY);
-    }
+    TaskHandle_t run_task_handle = xTaskGetHandle("run_task");
+    if (run_task_handle != NULL)
+        while (eTaskGetState(run_task_handle) == eTaskState::eRunning ||
+            eTaskGetState(run_task_handle) == eTaskState::eBlocked)
+        {
+            ESP_LOGI(TAG_MAIN, "Sending STOP to run_task");
+            if (hit_timer != NULL)
+                // stop timer
+                xTimerStop(hit_timer, portMAX_DELAY);
+            // run_queue
+            PRA_HIT_EVENT_DATA hit_done_data;
+            hit_done_data.address = 10;
+            if (run_queue != NULL)
+                xQueueSend(run_queue, &hit_done_data, portMAX_DELAY);
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+        }
     // STOP
     char log_string[35] = "Stopping Armour...";
     PRA_STOP_EVENT_DATA pra_stop_event_data;
@@ -332,6 +309,24 @@ void run_task(void *pvParameter)
         if (hit_state)
         {
             score_vector.push_back(score);
+            uint8_t len = score_vector.size();
+            // 迭代器保存最近10次成绩，不满10次的用0补齐
+            if (len <= 10)
+            {
+                for (uint8_t i = 0; i < 10 - len; i++)
+                    // 从尾到头写入ops_gpa_val
+                    ops_gpa_val[i] = score_vector[len - i - 1];
+
+                for (uint8_t i = 10 - len; i < 10; i++)
+                    ops_gpa_val[i] = 0;
+            }
+            else
+                for (uint8_t i = 0; i < 10; i++)
+                    // 从尾到头写入ops_gpa_val
+                    ops_gpa_val[i] = score_vector[len - i - 1];
+
+            esp_ble_gatts_set_attr_value(ops_handle_table[GPA_VAL], sizeof(ops_gpa_val), ops_gpa_val);
+
             ESP_LOGI(TAG_MAIN, "[Score: %d]PowerRune Activated Successfully", score);
             sprintf(log_string, "[Score: %d]PowerRune Activated Successfully", score);
             esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
@@ -551,7 +546,6 @@ void led_animation_task(void *pvParameter)
     uint16_t sequence[] = {1, 2, 3, 4, 5, 13, 20, 27, 34, 41, 47, 46, 45, 44, 43, 35, 28, 21, 14, 7};
     uint8_t sequence_len = sizeof(sequence) / sizeof(sequence[0]); // 20
     uint8_t line_len = 15;
-    TickType_t xLastWakeTime = xTaskGetTickCount();
     const PowerRune_Rlogo_config_info_t *config_rlogo = config->get_config_info_pt();
     while (1)
     {
@@ -563,7 +557,7 @@ void led_animation_task(void *pvParameter)
                 led_strip->set_color_index(sequence[(i + j) % sequence_len], config_rlogo->brightness, 0, 0);
             }
             led_strip->refresh();
-            vTaskDelayUntil(&xLastWakeTime, 100 / portTICK_PERIOD_MS);
+            vTaskDelay(100);
             // 只需要关闭第一个灯
             led_strip->set_color_index(sequence[i], 0, 0, 0);
             led_strip->refresh();
@@ -713,14 +707,6 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             // GPA_read事件
             ESP_LOGD(TAG_BLE, "GPA_read事件\n");
 
-            uint8_t len = score_vector.size();
-            // 打印最近10次成绩，不满10次的用0补齐
-            for (int i = 0; i < (len > 10 ? 10 : len); i++)
-            {
-                ops_gpa_val[i] = score_vector[i];
-            }
-
-            esp_ble_gatts_set_attr_value(p_data->read.handle, len, ops_gpa_val);
             ESP_LOGD(TAG_BLE, "GPA_read事件结束\n");
             break;
         }
@@ -1087,7 +1073,7 @@ extern "C" void app_main(void)
     esp_event_loop_args_t loop_args = {
         .queue_size = 10,
         .task_name = "pr_events_loop",
-        .task_priority = 5,
+        .task_priority = 2,
         .task_stack_size = 4096,
     };
     ESP_ERROR_CHECK(esp_event_loop_create(&loop_args, &pr_events_loop_handle));
@@ -1100,7 +1086,6 @@ extern "C" void app_main(void)
 
     // 注册大符通讯协议事件
     // 发送事件
-#if CONFIG_POWERRUNE_TYPE == 1 // RLogo
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, OTA_BEGIN_EVENT, ESPNowProtocol::tx_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, CONFIG_EVENT, ESPNowProtocol::tx_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_START_EVENT, ESPNowProtocol::tx_event_handler, NULL));
@@ -1111,23 +1096,8 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRM, PRM_STOP_EVENT, ESPNowProtocol::tx_event_handler, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, OTA_BEGIN_EVENT, Firmware::global_pr_event_handler, NULL));
-#endif
-#if CONFIG_POWERRUNE_TYPE == 0 // Armour
-    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, ESPNowProtocol::tx_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, OTA_BEGIN_EVENT, Firmware::global_pr_event_handler, NULL));
-#endif
-#if CONFIG_POWERRUNE_TYPE == 2 // Motor
-    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRM, PRM_DISCONNECT_EVENT, ESPNowProtocol::tx_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRM, PRM_SPEED_STABLE_EVENT, ESPNowProtocol::tx_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRM, PRM_START_DONE_EVENT, ESPNowProtocol::tx_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRM, PRM_UNLOCK_DONE_EVENT, ESPNowProtocol::tx_event_handler, NULL));
-#endif
-#if CONFIG_POWERRUNE_TYPE != 1 // 除了主控外的设备
-    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, OTA_COMPLETE_EVENT, ESPNowProtocol::tx_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, CONFIG_COMPLETE_EVENT, ESPNowProtocol::tx_event_handler, NULL));
-#endif
-    // BLE 特征值设置
 
+    // BLE 特征值设置
     memcpy(url_val, config->get_config_common_info_pt()->URL, 100);
     memcpy(ssid_val, config->get_config_common_info_pt()->SSID, 20);
     memcpy(wifi_val, config->get_config_common_info_pt()->SSID_pwd, 20);
@@ -1142,7 +1112,6 @@ extern "C" void app_main(void)
     memcpy(pid_val + 3 * sizeof(float), &(config->get_config_motor_info_pt()->i_max), sizeof(float));
     memcpy(pid_val + 4 * sizeof(float), &(config->get_config_motor_info_pt()->d_max), sizeof(float));
     memcpy(pid_val + 5 * sizeof(float), &(config->get_config_motor_info_pt()->out_max), sizeof(float));
-    score_vector.push_back(0);
 
     // BLE Start
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
@@ -1151,7 +1120,10 @@ extern "C" void app_main(void)
 
     esp_bt_controller_init(&bt_cfg);
     esp_bt_controller_enable(ESP_BT_MODE_BLE);
-    esp_bluedroid_init();
+    esp_bluedroid_config_t ble_cfg = {
+        .ssp_en = false,
+    };
+    esp_bluedroid_init_with_cfg(&ble_cfg);
     esp_bluedroid_enable();
 
     // GATT的回调注册
@@ -1163,27 +1135,22 @@ extern "C" void app_main(void)
 
     esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(500);
     if (local_mtu_ret)
-    {
         ESP_LOGE(TAG_MAIN, "set local  MTU failed, error code = %x", local_mtu_ret);
-    }
 
     ESP_LOGI(TAG_MAIN, "BLE Started.");
 
     // 发送STOP到各设备以复位
     PRM_STOP_EVENT_DATA stop_event_data;
     esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
+    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
-    // PowerRune_Events
-    // Register pra_start event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_START_EVENT, pra_start, NULL));
-    // Register pra_stop event handlers.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(PRA, PRA_STOP_EVENT, pra_stop, NULL, NULL));
     // 发送STOP到各装甲板设备
     PRA_STOP_EVENT_DATA pra_stop_event_data;
     for (uint8_t i = 0; i < 5; i++) // TODO: 改成5
     {
         pra_stop_event_data.address = i;
         esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
+        xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     }
     // 电机停止
     PRM_STOP_EVENT_DATA prm_stop_event_data;
@@ -1197,12 +1164,15 @@ extern "C" void app_main(void)
     ESP_LOGI(TAG_MAIN, "posting PRM_UNLOCK_EVENT");
     PRM_UNLOCK_EVENT_DATA unlock_data;
     ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_UNLOCK_EVENT, &unlock_data, sizeof(PRM_UNLOCK_EVENT_DATA), portMAX_DELAY));
+    // 等待ACK
+    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     // Unit Test, Post PRM_START_EVENT
     ESP_LOGI(TAG_MAIN, "posting PRM_START_EVENT");
-    struct PRM_START_EVENT_DATA start_data = {
+    PRM_START_EVENT_DATA start_data = {
         .mode = PRA_RUNE_SMALL_MODE,
-        .clockwise = PRM_DIRECTION_ANTICLOCKWISE,
+        .clockwise = PRM_DIRECTION_CLOCKWISE,
     };
     ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_START_EVENT, &start_data, sizeof(PRM_START_EVENT_DATA), portMAX_DELAY));
+
     vTaskSuspend(NULL);
 }
