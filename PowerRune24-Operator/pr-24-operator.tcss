@@ -1,0 +1,41 @@
+#operation_buttons {
+  layout: horizontal;
+  background: $boost;
+  height: 5;
+  padding: 1;
+}
+
+#start {
+  dock: left;
+}
+
+#stop {
+  display: none;
+}
+
+#reset {
+  dock: left;
+}
+
+#ota {
+  dock: right;
+}
+
+#start_params {
+  layout: horizontal;
+  height: 5;
+}
+
+#advanced_buttons {
+  layout: horizontal;
+  height: 5;
+  padding: 1;
+}
+
+.started #start {
+  display: none;
+}
+
+.started #stop {
+  display: block;
+}
