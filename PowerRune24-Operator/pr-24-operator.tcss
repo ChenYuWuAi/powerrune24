@@ -1,12 +1,16 @@
 #operation_buttons {
   layout: horizontal;
-  background: $boost;
+  align: left middle;
   height: 5;
   padding: 1;
 }
 
 #start {
   dock: left;
+}
+
+#state {
+  display: none;
 }
 
 #stop {
@@ -36,6 +40,26 @@
   display: none;
 }
 
+.started #state {
+  align: center middle;
+  display: block;
+}
+
 .started #stop {
+  dock: left;
+  display: block;
+}
+
+.reconnect #start {
+  dock: left;
+  display: block;
+}
+
+.reconnect #state {
+  display: none;
+}
+
+.reconnect #stop {
+  dock: right;
   display: block;
 }
