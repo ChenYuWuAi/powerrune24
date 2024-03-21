@@ -253,8 +253,8 @@ class PowerRune24_Operator(App):
                 yield ScrollableContainer(PowerRune24_Operations())
             with TabPane("日志", id="logs"):
                 yield Log(id="log")
-            with TabPane("系统设置", id="settings"):
-                yield ScrollableContainer(PowerRune24_Settings())
+            # with TabPane("系统设置", id="settings"):
+            #     yield ScrollableContainer(PowerRune24_Settings())
         yield Footer()
 
     def action_toggle_dark(self) -> None:
