@@ -159,7 +159,7 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
         {
 
             config_info = config->get_config_info_pt();
-            // 按ID进行同步化延迟，如1号装甲板延迟500ms，2号装甲板延迟400ms，3号装甲板延迟300ms，4号装甲板延迟200ms，5号装甲板延迟100ms
+            // 按ID进行同步化延迟
             vTaskDelay((BLINK_DELAY * (6 - config_info->armour_id)) / portTICK_PERIOD_MS);
             // UPPER，LOWER，MATRIX，ARM闪烁十次，MAIN_ARMOUR不闪烁
             for (uint8_t i = 0; i < 10; i++)
