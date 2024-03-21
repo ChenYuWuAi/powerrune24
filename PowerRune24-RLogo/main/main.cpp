@@ -1160,5 +1160,10 @@ extern "C" void app_main(void)
     // 启动LED动画，表示大符初始化完成
     xTaskCreate(led_animation_task, "led_animation_task", 2048, NULL, 5, &led_animation_task_handle);
     
+    // 解锁电机
+    PRM_UNLOCK_EVENT_DATA unlock_event_data;
+    esp_event_post_to(pr_events_loop_handle, PRM, PRM_UNLOCK_EVENT, &unlock_event_data, sizeof(PRM_UNLOCK_EVENT_DATA), portMAX_DELAY);
+    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+
     vTaskSuspend(NULL);
 }
