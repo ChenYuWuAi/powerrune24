@@ -1159,20 +1159,6 @@ extern "C" void app_main(void)
 
     // 启动LED动画，表示大符初始化完成
     xTaskCreate(led_animation_task, "led_animation_task", 2048, NULL, 5, &led_animation_task_handle);
-
-    // Unit Test, Post PRM_UNLOCK_EVENT
-    ESP_LOGI(TAG_MAIN, "posting PRM_UNLOCK_EVENT");
-    PRM_UNLOCK_EVENT_DATA unlock_data;
-    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_UNLOCK_EVENT, &unlock_data, sizeof(PRM_UNLOCK_EVENT_DATA), portMAX_DELAY));
-    // 等待ACK
-    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-    // Unit Test, Post PRM_START_EVENT
-    ESP_LOGI(TAG_MAIN, "posting PRM_START_EVENT");
-    PRM_START_EVENT_DATA start_data = {
-        .mode = PRA_RUNE_SMALL_MODE,
-        .clockwise = PRM_DIRECTION_CLOCKWISE,
-    };
-    ESP_ERROR_CHECK(esp_event_post_to(pr_events_loop_handle, PRM, PRM_START_EVENT, &start_data, sizeof(PRM_START_EVENT_DATA), portMAX_DELAY));
-
+    
     vTaskSuspend(NULL);
 }
