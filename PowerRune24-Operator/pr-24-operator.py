@@ -76,6 +76,7 @@ class PowerRune24_Operations(Static):
                 with RadioSet(id="direction"):
                     yield RadioButton("顺时针", value=True)
                     yield RadioButton("逆时针")
+                yield Button("清空得分记录", id="clear", variant="error")
 
     def BLE_notify_handler(self, sender, data):
         # byte array->string
@@ -83,15 +84,15 @@ class PowerRune24_Operations(Static):
         # 更新log
         log.write_line("[BLE] %s" % data)
         self.notify(data, title="大符", severity="information")
-        if (data == "PowerRune Activation Failed" and self.has_class("started")):
+        if data == "PowerRune Activation Failed" and self.has_class("started"):
             self.update_score(0)
         # 正则表达式提取，目标为"[Score: %d]PowerRune Activated Successfully", score，不定长
         if re.match(r"\[Score: \d+\]PowerRune Activated Successfully", data):
             score = int(re.findall(r"\d+", data)[0])
             self.update_score(score)
-        if (data == "PowerRune Run Complete"):
-            self.remove_class("started")       
-        
+        if data == "PowerRune Run Complete":
+            self.remove_class("started")
+
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """An action to start the PowerRune."""
         if event.button.id == "start":
@@ -156,6 +157,9 @@ class PowerRune24_Operations(Static):
             else:
                 self.notify("设备未连接", title="错误", severity="error")
                 log.write_line("[Error] 设备未连接")
+        elif event.button.id == "clear":
+            self.query_one(DataTable).clear()
+            log.write_line("[Info] 清空得分记录")
 
     async def on_mount(self) -> None:
         self.first_notify_enabled = False
@@ -253,9 +257,15 @@ class PowerRune24_Operator(App):
                 yield ScrollableContainer(PowerRune24_Operations())
             with TabPane("日志", id="logs"):
                 yield Log(id="log")
+                yield Button("清空日志", id="clear_log", variant="error")
             # with TabPane("系统设置", id="settings"):
             #     yield ScrollableContainer(PowerRune24_Settings())
         yield Footer()
+
+    def on_button_pressed(self, button: Button.Pressed) -> None:
+        """An action to clear the log."""
+        if button.button.id == "clear_log":
+            self.query_one(Log).clear()
 
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""
