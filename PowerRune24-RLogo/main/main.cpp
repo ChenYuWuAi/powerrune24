@@ -63,7 +63,7 @@ void stop_task(void *pvParameter)
     TaskHandle_t run_task_handle = xTaskGetHandle("run_task");
     if (run_task_handle != NULL)
         while (eTaskGetState(run_task_handle) == eTaskState::eRunning ||
-            eTaskGetState(run_task_handle) == eTaskState::eBlocked)
+               eTaskGetState(run_task_handle) == eTaskState::eBlocked)
         {
             ESP_LOGI(TAG_MAIN, "Sending STOP to run_task");
             if (hit_timer != NULL)
@@ -86,6 +86,7 @@ void stop_task(void *pvParameter)
         // 等待ACK
         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     }
+    pra_stop(NULL, NULL, 0, NULL);
     sprintf(log_string, "Armour stopped, stopping motor");
     esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[STOP_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
     // 发送STOP到PRM
@@ -149,7 +150,7 @@ void run_task(void *pvParameter)
     ESP_LOGI(TAG_MAIN, "Circulation : %s", value[2] ? "Enabled" : "Disabled");
     ESP_LOGI(TAG_MAIN, "Direction : %s", value[3] ? "Clockwise" : "Anti-Clockwise");
     // 发送indicator日志
-    sprintf(log_string, "PowerRune Start with Color %s, Mode %s, Circulation %s, Direction %s.", value[0] ? "Blue" : "Red", value[1] ? "Small" : "Big", value[2] ? "Enabled" : "Disabled", value[3] ? "Clockwise" : "Anti-Clockwise");
+    sprintf(log_string, "PowerRune Start with Color %s, Mode %s, Circulation %s, Direction %s.", value[0] ? "Blue" : "Red", value[1] ? "Small" : "Big", value[2] ? "Enabled" : "Disabled", value[3] ? "Anti-Clockwise" : "Clockwise");
     esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
 
     // 设置颜色
@@ -365,10 +366,8 @@ void run_task(void *pvParameter)
     sprintf(log_string, "PowerRune Run Complete");
     esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
 
-    // 恢复空闲状态
-    led_strip->clear_pixels();
-    vTaskResume(led_animation_task_handle);
-    xTaskNotifyGive(led_animation_task_handle);
+    // 恢复空闲灯效
+    pra_stop(NULL, NULL, 0, NULL);
     // 发送STOP到PRM
     PRM_STOP_EVENT_DATA prm_stop_event_data;
     esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
@@ -401,6 +400,7 @@ void ota_task(void *pvParameter)
         // 等待ACK
         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     }
+    pra_stop(NULL, NULL, 0, NULL);
     PRM_STOP_EVENT_DATA prm_stop_event_data;
     esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
     // 等待ACK
@@ -475,7 +475,7 @@ void ota_task(void *pvParameter)
         vTaskDelay(5000 / portTICK_PERIOD_MS);
         esp_restart();
     }
-    vTaskResume(led_animation_task_handle);
+    pra_stop(NULL, NULL, 0, NULL);
     sprintf(log_string, "OTA operation complete");
     esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
     xEventGroupClearBits(Firmware::ota_event_group, Firmware::OTA_COMPLETE_LISTENING_BIT);
@@ -535,9 +535,16 @@ void reset_armour_id_task(void *pvParameter)
 // PowerRune_Events handles
 static void pra_stop(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-    vTaskResume(led_animation_task_handle);
-    // 发送重置通知
-    xTaskNotifyGive(led_animation_task_handle);
+    if (led_animation_task_handle == NULL)
+        return;
+
+    while (eTaskGetState(led_animation_task_handle) == eSuspended)
+    {
+        vTaskResume(led_animation_task_handle);
+        // 发送重置通知
+        xTaskNotifyGive(led_animation_task_handle);
+        vTaskDelay(100);
+    }
     return;
 }
 
@@ -1159,7 +1166,7 @@ extern "C" void app_main(void)
 
     // 启动LED动画，表示大符初始化完成
     xTaskCreate(led_animation_task, "led_animation_task", 2048, NULL, 5, &led_animation_task_handle);
-    
+
     // 解锁电机
     PRM_UNLOCK_EVENT_DATA unlock_event_data;
     esp_event_post_to(pr_events_loop_handle, PRM, PRM_UNLOCK_EVENT, &unlock_event_data, sizeof(PRM_UNLOCK_EVENT_DATA), portMAX_DELAY);
