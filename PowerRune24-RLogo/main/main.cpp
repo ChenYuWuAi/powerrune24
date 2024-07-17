@@ -57,6 +57,22 @@ void unlock_task(void *pvParameter)
     vTaskDelete(NULL);
 }
 
+// PowerRune_Events handles
+static void pra_stop(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
+{
+    if (led_animation_task_handle == NULL)
+        return;
+
+    while (eTaskGetState(led_animation_task_handle) == eSuspended)
+    {
+        vTaskResume(led_animation_task_handle);
+        // 发送重置通知
+        xTaskNotifyGive(led_animation_task_handle);
+        vTaskDelay(100);
+    }
+    return;
+}
+
 void stop_task(void *pvParameter)
 {
     // 发送停止位
@@ -530,22 +546,6 @@ void reset_armour_id_task(void *pvParameter)
     sprintf(log_string, "Armour IDs reset");
     esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[ARMOUR_ID_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
     vTaskDelete(NULL);
-}
-
-// PowerRune_Events handles
-static void pra_stop(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
-{
-    if (led_animation_task_handle == NULL)
-        return;
-
-    while (eTaskGetState(led_animation_task_handle) == eSuspended)
-    {
-        vTaskResume(led_animation_task_handle);
-        // 发送重置通知
-        xTaskNotifyGive(led_animation_task_handle);
-        vTaskDelay(100);
-    }
-    return;
 }
 
 void led_animation_task(void *pvParameter)
