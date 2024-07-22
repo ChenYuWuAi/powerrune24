@@ -502,7 +502,7 @@ void PowerRune_Armour::global_pr_event_handler(void *handler_args, esp_event_bas
             debug();
             break;
         case OTA_COMPLETE_EVENT:
-            trigger(PRA_RUNE_BIG_MODE, PR_RED);
+            stop();
             break;
         }
     }
