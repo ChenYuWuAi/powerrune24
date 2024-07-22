@@ -15,6 +15,8 @@ TaskHandle_t PowerRune_Armour::LED_update_task_handle;
 SemaphoreHandle_t PowerRune_Armour::LED_Strip_FSM_Semaphore;
 LED_Strip_FSM_t PowerRune_Armour::state;
 
+bool valid[10] = {true, true, true, true, true, true, true, true, true, true};
+
 void PowerRune_Armour::clear_armour(bool refresh)
 {
     for (uint8_t i = 0; i < 5; i++)
@@ -32,14 +34,38 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
     // 状态
     LED_Strip_FSM_t state_task;
     const PowerRune_Armour_config_info_t *config_info;
+
+    // 清除所有灯效
+    for (uint8_t i = 0; i < 5; i++)
+    {
+        demux_led = i;
+        led_strip[i]->refresh();
+    }
     while (1)
     {
-        // 状态机，状态转移：IDLE->TARGET->HIT->BLINK->IDLE，TARGET->HIT和BLINK->IDLE过程之后task阻塞，等待信号量
+        // 状态机，状态转移：START->IDLE->TARGET->HIT->BLINK->IDLE，TARGET->HIT和BLINK->IDLE过程之后task阻塞，等待信号量
         switch (state.LED_Strip_State)
         {
+        case LED_STRIP_DEBUG:
+        {
+            do
+            { // 初始化状态，使用valid变量显示损坏的装甲板
+                demux_led = LED_STRIP_MAIN_ARMOUR;
+                // led_strip[LED_STRIP_MAIN_ARMOUR]->clear_pixels();
+                for (size_t i = 0; i < 10; i++)
+                {
+                    if (!valid[i])
+                        for (uint16_t j = hit_ring_cutoff[i]; j < hit_ring_cutoff[i + 1]; j++)
+                            led_strip[LED_STRIP_MAIN_ARMOUR]->set_color_index(j, 0, 100, 0); // Green
+                    led_strip[LED_STRIP_MAIN_ARMOUR]->refresh();
+                }
+            } while (xSemaphoreTake(LED_Strip_FSM_Semaphore, 0) == pdFALSE);
+            // 转移状态
+            state_task = state;
+            break;
+        }
         case LED_STRIP_IDLE:
             clear_armour();
-
             // 等待信号量
             xSemaphoreTake(LED_Strip_FSM_Semaphore, portMAX_DELAY);
             // 转移状态
@@ -220,7 +246,8 @@ void PowerRune_Armour::GPIO_init()
 {
     // 初始化GPIO
     gpio_config_t io_conf;
-    io_conf.intr_type = GPIO_INTR_NEGEDGE;
+    // io_conf.intr_type = GPIO_INTR_NEGEDGE;
+    io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
     io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
@@ -229,6 +256,107 @@ void PowerRune_Armour::GPIO_init()
         io_conf.pin_bit_mask = (1ULL << TRIGGER_IO[i]);
         gpio_config(&io_conf);
     }
+}
+
+void PowerRune_Armour::GPIO_polling_service(void *pvParameter)
+{
+    uint8_t io_valid_state[10] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    uint8_t io_last_valid_state[10] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    uint8_t io_last_reading[10] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    TickType_t last_jump_time[10] = {0};
+    TickType_t bounce_time[10] = {0};
+    TickType_t activation_time[10] = {0};
+    TickType_t last_activation_time = 0;
+    uint32_t bounce_count[10] = {0}; // 消抖计数
+
+    ESP_LOGI(TAG_ARMOUR, "GPIO polling service start");
+    TickType_t start_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+    while (1)
+    {
+        TickType_t current_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+        for (uint8_t i = 0; i < 10; i++)
+        {
+            int reading = gpio_get_level(TRIGGER_IO[i]);
+
+            // 去抖动处理
+            if (reading != io_last_reading[i] && valid[i])
+            {
+                last_jump_time[i] = current_time;
+                bounce_count[i]++;
+                ESP_LOGI(TAG_ARMOUR, "GPIO %d, Bounce Count: %d", (int)TRIGGER_IO[i], (int)bounce_count[i]);
+                io_last_reading[i] = reading;
+            }
+
+            if ((current_time - last_jump_time[i]) > 1) // 消抖时间
+            {
+                if (valid[i] && (reading != io_valid_state[i])) // 有效触发
+                {
+                    if (reading == 0 && current_time - last_activation_time > 1000) // LOW level，触发间隔需大于1s
+                    {
+                        io_valid_state[i] = reading;
+                        last_activation_time = current_time;
+                        activation_time[i] = current_time;
+                        ESP_LOGI(TAG_ARMOUR, "GPIO %d, Score IO %d Triggered", (int)TRIGGER_IO[i], (int)TRIGGER_IO_TO_SCORE[i]);
+                    }
+                    else if (reading == 1)
+                    {
+                        io_valid_state[i] = reading;
+                        ESP_LOGI(TAG_ARMOUR, "GPIO %d, Score IO %d Released", (int)TRIGGER_IO[i], (int)TRIGGER_IO_TO_SCORE[i]);
+                    }
+                }
+            }
+
+            // 持续低电平激活检测
+            if (io_valid_state[i] == 0 && current_time - activation_time[i] > 1000 && valid[i])
+            {
+                valid[i] = false;
+                ESP_LOGI(TAG_ARMOUR, "GPIO %d damaged: Low level detected for too long.", TRIGGER_IO[i]);
+                io_valid_state[i] = 1;
+            }
+
+            // 跳变检测，防止键轴卡阻
+            if ((current_time - bounce_time[i]) < 5000 && valid[i])
+            {
+                if (bounce_count[i] > 10) // 5秒内跳变次数超过15次，认为是键轴卡阻
+                {
+                    valid[i] = false;
+                    ESP_LOGI(TAG_ARMOUR, "GPIO %d damaged: Frequent bouncing detected.", TRIGGER_IO[i]);
+                    io_valid_state[i] = 1;
+                    bounce_count[i] = 0;
+                    bounce_time[i] = current_time;
+                }
+            }
+            else if (valid[i])
+            {
+                bounce_count[i] = 0;
+                bounce_time[i] = current_time;
+            }
+            else if (!valid[i])
+            {
+                bounce_count[i] = 0;
+            }
+
+            if ((xTaskGetTickCount() * portTICK_PERIOD_MS - start_time) > 2000) // 预留2s供按键检测
+            {
+                if (io_valid_state[i] == 0 && valid[i] && io_last_valid_state[i] == 1) // 下升沿触发，保证实时性
+                {
+                    ESP_LOGI(TAG_ARMOUR, "GPIO %d, Score IO %d Sending event...", TRIGGER_IO[i], TRIGGER_IO_TO_SCORE[i]);
+                    // 发送事件
+                    PRA_HIT_EVENT_DATA hit_event_data;
+                    hit_event_data.address = config->get_config_info_pt()->armour_id - 1;
+                    hit_event_data.score = TRIGGER_IO_TO_SCORE[i];
+                    esp_event_post_to(pr_events_loop_handle, PRA, PRA_HIT_EVENT, &hit_event_data, sizeof(PRA_HIT_EVENT_DATA), portMAX_DELAY);
+                    io_last_valid_state[i] = io_valid_state[i];
+                }
+                else if (io_valid_state[i] == 1 && valid[i] && io_last_valid_state[i] == 0)
+                {
+                    io_last_valid_state[i] = io_valid_state[i];
+                }
+            }
+        }
+        vTaskDelay(1 / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL);
 }
 
 void PowerRune_Armour::GPIO_ISR_enable()
@@ -255,13 +383,15 @@ PowerRune_Armour::PowerRune_Armour()
     // 初始化GPIO
     GPIO_init();
     // 开启ISR服务
-    gpio_install_isr_service(0);
-    for (uint8_t i = 0; i < 10; i++)
-    {
-        gpio_isr_handler_add(TRIGGER_IO[i], GPIO_ISR_handler, (void *)&TRIGGER_IO_TO_SCORE[i]);
-    }
+    // gpio_install_isr_service(0);
+    // for (uint8_t i = 0; i < 10; i++)
+    // {
+    // gpio_isr_handler_add(TRIGGER_IO[i], GPIO_ISR_handler, (void *)&TRIGGER_IO_TO_SCORE[i]);
+    // }
 
-    GPIO_ISR_enable();
+    // GPIO_ISR_enable();
+    // 开启GPIO轮询服务
+    xTaskCreate(GPIO_polling_service, "GPIO_polling_service", 4096, NULL, 5, NULL);
     // 初始化LED_Strip
     led_strip[LED_STRIP_MAIN_ARMOUR] = new LED_Strip(STRIP_IO, 301);
     led_strip[LED_STRIP_UPPER] = new LED_Strip(STRIP_IO, 86);
@@ -280,6 +410,9 @@ PowerRune_Armour::PowerRune_Armour()
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, global_pr_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_STOP_EVENT, global_pr_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_COMPLETE_EVENT, global_pr_event_handler, NULL));
+    // OTA事件处理
+    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, OTA_BEGIN_EVENT, global_pr_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, OTA_COMPLETE_EVENT, global_pr_event_handler, NULL));
 }
 
 void PowerRune_Armour::trigger(RUNE_MODE mode, RUNE_COLOR color)
@@ -299,6 +432,15 @@ void PowerRune_Armour::stop()
     ESP_LOGI(TAG_ARMOUR, "Stop Armour");
     // 状态机更新
     state.LED_Strip_State = LED_STRIP_IDLE;
+    // 释放信号量
+    xSemaphoreGive(LED_Strip_FSM_Semaphore);
+}
+
+void PowerRune_Armour::debug()
+{
+    ESP_LOGI(TAG_ARMOUR, "Debug Armour");
+    // 状态机更新
+    state.LED_Strip_State = LED_STRIP_DEBUG;
     // 释放信号量
     xSemaphoreGive(LED_Strip_FSM_Semaphore);
 }
@@ -324,31 +466,44 @@ void PowerRune_Armour::blink()
 
 void PowerRune_Armour::global_pr_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-    switch (id)
-    {
-    case PRA_START_EVENT:
-    {
-        PRA_START_EVENT_DATA *start_event_data = (PRA_START_EVENT_DATA *)event_data;
-        trigger((RUNE_MODE)start_event_data->mode, (RUNE_COLOR)start_event_data->color);
-        break;
-    }
-    case PRA_STOP_EVENT:
-        stop();
-        break;
-    case PRA_HIT_EVENT:
-    {
-        // 检查状态机状态
-        if (state.LED_Strip_State == LED_STRIP_TARGET)
+    if (base == PRA)
+        switch (id)
         {
-            PRA_HIT_EVENT_DATA *hit_event_data = (PRA_HIT_EVENT_DATA *)event_data;
-            hit(hit_event_data->score);
+        case PRA_START_EVENT:
+        {
+            PRA_START_EVENT_DATA *start_event_data = (PRA_START_EVENT_DATA *)event_data;
+            trigger((RUNE_MODE)start_event_data->mode, (RUNE_COLOR)start_event_data->color);
+            break;
         }
-        break;
-    }
-    case PRA_COMPLETE_EVENT:
+        case PRA_STOP_EVENT:
+            stop();
+            break;
+        case PRA_HIT_EVENT:
+        {
+            // 检查状态机状态
+            if (state.LED_Strip_State == LED_STRIP_TARGET)
+            {
+                PRA_HIT_EVENT_DATA *hit_event_data = (PRA_HIT_EVENT_DATA *)event_data;
+                hit(hit_event_data->score);
+            }
+            break;
+        }
+        case PRA_COMPLETE_EVENT:
+        {
+            blink();
+            break;
+        }
+        }
+    else if (base == PRC)
     {
-        blink();
-        break;
-    }
+        switch (id)
+        {
+        case OTA_BEGIN_EVENT:
+            debug();
+            break;
+        case OTA_COMPLETE_EVENT:
+            trigger(PRA_RUNE_BIG_MODE, PR_RED);
+            break;
+        }
     }
 }

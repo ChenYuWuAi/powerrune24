@@ -40,6 +40,7 @@ enum LED_Strip_Enum
 // LED_Strip_State_t
 enum LED_Strip_State_t
 {
+    LED_STRIP_DEBUG,
     LED_STRIP_IDLE,
     LED_STRIP_TARGET,
     LED_STRIP_HIT,
@@ -50,7 +51,7 @@ struct LED_Strip_FSM_t
 {
     RUNE_COLOR color = PR_RED;
     RUNE_MODE mode = PRA_RUNE_BIG_MODE;
-    LED_Strip_State_t LED_Strip_State = LED_STRIP_IDLE;
+    LED_Strip_State_t LED_Strip_State = LED_STRIP_DEBUG;
     uint8_t score = 0; // 默认值为0
 };
 
@@ -205,17 +206,22 @@ private:
     static void IRAM_ATTR GPIO_ISR_handler(void *arg);
     // 装甲板启动，含红蓝方和大小符
     static inline void trigger(RUNE_MODE mode, RUNE_COLOR color);
-    // 装甲板停止
-    static inline void stop();
     // 装甲板命中
     static inline void hit(uint8_t score);
     // 装甲板清除
     static inline void clear_armour(bool refresh = true);
     // 装甲板激活完毕
     static inline void blink();
+    // 装甲板DEBUG
+    static inline void debug();
+    // 装甲板停止
+    static inline void stop();
+    // GPIO轮询&滤波服务
+    static void GPIO_polling_service(void *pvParameter);
 
 public:
     PowerRune_Armour();
     static void global_pr_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data);
 };
+
 #endif

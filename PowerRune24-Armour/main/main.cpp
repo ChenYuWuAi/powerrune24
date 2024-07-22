@@ -34,6 +34,9 @@ extern "C" void app_main(void)
     };
     ESP_ERROR_CHECK(esp_event_loop_create(&loop_args, &pr_events_loop_handle));
 
+    // Armour init
+    PowerRune_Armour armour;
+
     // Firmware init
     Firmware firmware;
 
@@ -47,9 +50,6 @@ extern "C" void app_main(void)
     else
         led->set_mode(LED_MODE_BLINK, 0);
 
-    // Armour init
-    PowerRune_Armour armour;
-
     // 注册大符通讯协议事件
     // 发送事件
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, ESPNowProtocol::tx_event_handler, NULL));
@@ -59,6 +59,10 @@ extern "C" void app_main(void)
 
     // Register beacon timeout event handlers.
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, BEACON_TIMEOUT_EVENT, beacon_timeout, NULL));
+
+    // 连接上即可关闭DEBUG状态
+    PRA_STOP_EVENT_DATA pra_start_event_data;
+    esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_start_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
 
     vTaskSuspend(NULL);
 }
