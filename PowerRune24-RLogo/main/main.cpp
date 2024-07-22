@@ -263,73 +263,63 @@ void run_task(void *pvParameter)
             // 开启FreeRTOS计时器
             xTimerReset(hit_timer, portMAX_DELAY);
             xTimerStart(hit_timer, portMAX_DELAY);
-            while (1)
+            xQueueReceive(run_queue, &hit_done_data, portMAX_DELAY);
+            // 关闭FreeRTOS计时器
+            xTimerStop(hit_timer, portMAX_DELAY);
+            if (hit_done_data.address != expected_id - 1)
             {
-                xQueueReceive(run_queue, &hit_done_data, portMAX_DELAY);
-                if (hit_done_data.address != expected_id - 1)
+                if (hit_done_data.address == 0xFF)
                 {
-                    if (hit_done_data.address == 0xFF)
+                    // 超时
+                    ESP_LOGE(TAG_MAIN, "Timeout hit from armour %d, activation failed", expected_id);
+                    sprintf(log_string, "Timeout hit from armour %d, activation failed", expected_id);
+                    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
+                    PRA_STOP_EVENT_DATA pra_stop_event_data;
+                    // 发送STOP到所有已激活设备
+                    for (int8_t j = i; j >= 0; j--)
                     {
-                        // 超时
-                        ESP_LOGE(TAG_MAIN, "Timeout hit from armour %d, activation failed", expected_id);
-                        sprintf(log_string, "Timeout hit from armour %d, activation failed", expected_id);
-                        esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
-                        PRA_STOP_EVENT_DATA pra_stop_event_data;
-                        // 发送STOP到所有已激活设备
-                        for (int8_t j = i; j >= 0; j--)
-                        {
-                            pra_stop_event_data.address = rune_start_sequence[j] - 1; // TODO：这里应该是个数组
-                            esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
-                            // 等待ACK
-                            xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-                        }
-                        hit_state = 0; // 未完成
-                        // 关闭FreeRTOS计时器
-                        xTimerStop(hit_timer, portMAX_DELAY);
-                        i = 5; // 跳出for
-                        break;
+                        pra_stop_event_data.address = rune_start_sequence[j] - 1; // TODO：这里应该是个数组
+                        esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
+                        // 等待ACK
+                        xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
                     }
-                    else if (hit_done_data.address == 10)
-                    {
-                        // 收到PRA_STOP_EVENT，停止
-                        ESP_LOGI(TAG_MAIN, "PRA_STOP_EVENT received, stopping");
-                        sprintf(log_string, "PRA_STOP_EVENT received, stopping");
-                        esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
-                        circulation = 0;
-                        hit_state = 0;
-                        // 关闭FreeRTOS计时器
-                        xTimerStop(hit_timer, portMAX_DELAY);
-                        i = 5; // 跳出for
-                        break;
-                    }
-                    else
-                    {
-                        // TODO:修复键轴误触问题后可以启动这段代码
-                        ESP_LOGI(TAG_MAIN, "Mistaken hit from armour %d, expected %d", hit_done_data.address + 1, expected_id);
-                        sprintf(log_string, "Mistaken hit from armour %d, expected %d", hit_done_data.address + 1, expected_id);
-                        esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
-                        // // 发送STOP到所有已激活设备
-                        // for (int8_t j = i; j >= 0; j--)
-                        // {
-                        //     PRA_STOP_EVENT_DATA pra_stop_event_data;
-                        //     pra_stop_event_data.address = rune_start_sequence[j] - 1; // TODO：这里应该是个数组
-                        //     esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
-                        //     // 等待ACK
-                        //     xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-                        // }
-                        // hit_state = 0;
-                        // break;
-                        continue;
-                    }
+                    hit_state = 0; // 未完成
+                    break;
+                }
+                else if (hit_done_data.address == 10)
+                {
+                    // 收到PRA_STOP_EVENT，停止
+                    ESP_LOGI(TAG_MAIN, "PRA_STOP_EVENT received, stopping");
+                    sprintf(log_string, "PRA_STOP_EVENT received, stopping");
+                    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
+                    circulation = 0;
+                    hit_state = 0;
+                    break;
                 }
                 else
                 {
-                    score += hit_done_data.score;
-                    ESP_LOGI(TAG_MAIN, "Hit from armour %d score +%d", expected_id, hit_done_data.score);
-                    sprintf(log_string, "Hit from armour %d score +%d", expected_id, hit_done_data.score);
+                    ESP_LOGI(TAG_MAIN, "Mistaken hit from armour %d, expected %d", hit_done_data.address + 1, expected_id);
+                    sprintf(log_string, "Mistaken hit from armour %d, expected %d", hit_done_data.address + 1, expected_id);
                     esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
+                    // 发送STOP到所有已激活设备
+                    for (int8_t j = i; j >= 0; j--)
+                    {
+                        PRA_STOP_EVENT_DATA pra_stop_event_data;
+                        pra_stop_event_data.address = rune_start_sequence[j] - 1; // TODO：这里应该是个数组
+                        esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
+                        // 等待ACK
+                        xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+                    }
+                    hit_state = 0;
                     break;
                 }
+            }
+            else
+            {
+                score += hit_done_data.score;
+                ESP_LOGI(TAG_MAIN, "Hit from armour %d score +%d", expected_id, hit_done_data.score);
+                sprintf(log_string, "Hit from armour %d score +%d", expected_id, hit_done_data.score);
+                esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
             }
         }
         // 发送PRA_COMPLETE_EVENT
