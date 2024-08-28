@@ -36,6 +36,7 @@ python pr-24-operator.py
 - 将大符`220V`电源插头插入电源插座。
 - 确认大符电源指示灯亮起，或听到风扇正常运转声音。
 - 如果需要OTA升级，在开机前请配置OTA使用的Wifi，SSID配置为`3SE-120`，密码配置为`roboclub`，加密方式配置为`WPA2`，连接频段配置为`2.4GHz`，上电后，大符将连接Wifi，自动更新。
+- 开源Fork有需要时请务必注意修改OTA地址，修改方式为(修改menuconfig中的默认OTA地址/运行时通过BLE特征值修改UUID_URL 0x2AA6的内容)。
 
 上电后大符将进行自动更新和初始化，完成后，大符R标将显示为待命状态，此时BLE进入可以连接状态。
 ### 2. 连接PowerRune Operator
