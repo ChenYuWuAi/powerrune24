@@ -168,7 +168,7 @@ esp_err_t Config::reset()
 #if CONFIG_POWERRUNE_TYPE == 0 // ARMOUR
     config_info = {
         .brightness = 127,
-        .armour_id = 0xFF,
+        .armour_id = 0x00, // TODO:默认值为装甲1
         .brightness_proportion_matrix = 127,
         .brightness_proportion_edge = 127,
     };

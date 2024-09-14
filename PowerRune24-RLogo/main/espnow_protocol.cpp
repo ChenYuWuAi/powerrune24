@@ -1093,14 +1093,14 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
             }
             // 检查是否完成设置
             // 正式上线版本
-            if (memcmp(mac_addr[0], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
-                memcmp(mac_addr[1], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
-                memcmp(mac_addr[2], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
-                memcmp(mac_addr[3], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
-                memcmp(mac_addr[4], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
-                memcmp(mac_addr[5], NULL_mac, ESP_NOW_ETH_ALEN) != 0)
-            // DEBUG版本
-            // if (memcmp(mac_addr[5], NULL_mac, ESP_NOW_ETH_ALEN) != 0)
+            // if (memcmp(mac_addr[0], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
+            //     memcmp(mac_addr[1], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
+            //     memcmp(mac_addr[2], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
+            //     memcmp(mac_addr[3], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
+            //     memcmp(mac_addr[4], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
+            //     memcmp(mac_addr[5], NULL_mac, ESP_NOW_ETH_ALEN) != 0)
+            // TODO:DEBUG版本，只连接一个节点
+            if (memcmp(mac_addr[0], NULL_mac, ESP_NOW_ETH_ALEN) != 0)
             {
                 break;
             }
@@ -1135,12 +1135,12 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
     free(received_data);
     ESP_LOGD(TAG_MESSAGER, "Peer list established");
     peer_list_established = true;
-#if CONFIG_POWERRUNE_TYPE == 1
-    if (reset_id)
-    {
-        return ESP_ERR_INVALID_STATE;
-    }
-#endif
+// #if CONFIG_POWERRUNE_TYPE == 1
+//     if (reset_id)
+//     {
+//         return ESP_ERR_INVALID_STATE;
+//     }
+// #endif
     return ESP_OK;
 }
 

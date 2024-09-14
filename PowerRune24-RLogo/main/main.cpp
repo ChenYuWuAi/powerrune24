@@ -95,7 +95,7 @@ void stop_task(void *pvParameter)
     // STOP
     char log_string[35] = "Stopping Armour...";
     PRA_STOP_EVENT_DATA pra_stop_event_data;
-    for (uint8_t i = 0; i < 5; i++)
+    for (uint8_t i = 0; i < 0; i++)
     {
         pra_stop_event_data.address = i;
         esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
@@ -103,15 +103,15 @@ void stop_task(void *pvParameter)
         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     }
     pra_stop(NULL, NULL, 0, NULL);
-    sprintf(log_string, "Armour stopped, stopping motor");
-    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[STOP_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
-    // 发送STOP到PRM
-    PRM_STOP_EVENT_DATA prm_stop_event_data;
-    esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
-    // 等待ACK
-    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-    sprintf(log_string, "Motor stopped");
-    esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[STOP_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
+    // sprintf(log_string, "Armour stopped, stopping motor");
+    // esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[STOP_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
+    // // 发送STOP到PRM
+    // PRM_STOP_EVENT_DATA prm_stop_event_data;
+    // esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
+    // // 等待ACK
+    // xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    // sprintf(log_string, "Motor stopped");
+    // esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[STOP_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
 
     vTaskDelete(NULL);
 }
@@ -207,14 +207,14 @@ void run_task(void *pvParameter)
     }
     esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
     // 注册事件
-    esp_event_handler_register_with(pr_events_loop_handle, PRM, PRM_SPEED_STABLE_EVENT, prm_speed_stable_event_handler, motor_done_sem);
+    // esp_event_handler_register_with(pr_events_loop_handle, PRM, PRM_SPEED_STABLE_EVENT, prm_speed_stable_event_handler, motor_done_sem);
     // 启动并等待PRM稳定
-    esp_event_post_to(pr_events_loop_handle, PRM, PRM_START_EVENT, &prm_start_event_data, sizeof(PRM_START_EVENT_DATA), portMAX_DELAY);
-    // 等待ACK
-    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-    // 等待信号量
-    xSemaphoreTake(motor_done_sem, portMAX_DELAY);
-    esp_event_handler_unregister_with(pr_events_loop_handle, PRM, PRM_SPEED_STABLE_EVENT, prm_speed_stable_event_handler);
+    // esp_event_post_to(pr_events_loop_handle, PRM, PRM_START_EVENT, &prm_start_event_data, sizeof(PRM_START_EVENT_DATA), portMAX_DELAY);
+    // // 等待ACK
+    // xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    // // 等待信号量
+    // xSemaphoreTake(motor_done_sem, portMAX_DELAY);
+    // esp_event_handler_unregister_with(pr_events_loop_handle, PRM, PRM_SPEED_STABLE_EVENT, prm_speed_stable_event_handler);
 
     ESP_LOGI(TAG_MAIN, "Motor speed stable.");
     sprintf(log_string, "Motor speed stable.");
@@ -252,11 +252,11 @@ void run_task(void *pvParameter)
         };
         ESP_LOGI(TAG_MAIN, "Starting Armour...");
         sprintf(log_string, "Starting Armour...");
-        for (uint8_t i = 0; i < 5; i++) // TODO: 把这里改成已连接设备数
+        for (uint8_t i = 0; i < 1; i++) // TODO: 把这里改成已连接设备数
         {
-            uint8_t expected_id = rune_start_sequence[i];
+            uint8_t expected_id = 1; // 测试：等待1号靶子响应
 
-            pra_start_event_data.address = expected_id - 1;
+            pra_start_event_data.address = 0; // 测试：等待1号靶子响应
             esp_event_post_to(pr_events_loop_handle, PRA, PRA_START_EVENT, &pra_start_event_data, sizeof(PRA_START_EVENT_DATA), portMAX_DELAY);
             // 等待通信
             xEventGroupWaitBits(espnow_protocol->send_state, espnow_protocol->SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
@@ -348,7 +348,7 @@ void run_task(void *pvParameter)
             sprintf(log_string, "[Score: %d]PowerRune Activated Successfully", score);
             esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[RUN_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
             PRA_COMPLETE_EVENT_DATA pra_complete_event_data;
-            for (uint8_t i = 0; i < 5; i++) // TODO: 把这里改成已连接设备数
+            for (uint8_t i = 0; i < 1; i++) // TODO: 把这里改成已连接设备数
             {
                 pra_complete_event_data.address = i;
                 esp_event_post_to(pr_events_loop_handle, PRA, PRA_COMPLETE_EVENT, &pra_complete_event_data, sizeof(PRA_COMPLETE_EVENT_DATA), portMAX_DELAY);
@@ -360,9 +360,9 @@ void run_task(void *pvParameter)
             // 清屏
             // 发送STOP到所有已激活设备
             PRA_STOP_EVENT_DATA pra_stop_event_data;
-            for (uint8_t j = 0; j < 5; j++)
+            for (uint8_t j = 0; j < 1; j++)
             {
-                pra_stop_event_data.address = rune_start_sequence[j] - 1; // TODO：这里应该是个数组
+                pra_stop_event_data.address = 0; // TODO：这里应该是个数组
                 esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
                 // 等待ACK
                 xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
@@ -385,10 +385,10 @@ void run_task(void *pvParameter)
     // 恢复空闲灯效
     pra_stop(NULL, NULL, 0, NULL);
     // 发送STOP到PRM
-    PRM_STOP_EVENT_DATA prm_stop_event_data;
-    esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
-    // 等待ACK
-    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    // PRM_STOP_EVENT_DATA prm_stop_event_data;
+    // esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
+    // // 等待ACK
+    // xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     // 注销事件、删除队列、删除计时器
     esp_event_handler_unregister_with(pr_events_loop_handle, PRA, PRA_HIT_EVENT, hit_event_handler);
     vQueueDelete(run_queue);
@@ -408,7 +408,7 @@ void ota_task(void *pvParameter)
     esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, ops_handle_table[OTA_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
 
     // 发送STOP到所有设备
-    for (size_t i = 0; i < 5; i++) // TODO: 把这里改成已连接设备数
+    for (size_t i = 0; i < 1; i++) // TODO: 把这里改成已连接设备数
     {
         PRA_STOP_EVENT_DATA pra_stop_event_data;
         pra_stop_event_data.address = i;
@@ -417,10 +417,10 @@ void ota_task(void *pvParameter)
         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     }
     pra_stop(NULL, NULL, 0, NULL);
-    PRM_STOP_EVENT_DATA prm_stop_event_data;
-    esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
-    // 等待ACK
-    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    // PRM_STOP_EVENT_DATA prm_stop_event_data;
+    // esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
+    // // 等待ACK
+    // xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
     // 置位队列listening bit
     // 生成队列
@@ -428,7 +428,7 @@ void ota_task(void *pvParameter)
     assert(Firmware::ota_complete_queue != NULL);
     xEventGroupSetBits(Firmware::ota_event_group, Firmware::OTA_COMPLETE_LISTENING_BIT);
     // 命令各个设备开始OTA，先暂停ESP_NOW收发，然后重新启动ESP_NOW收发
-    for (size_t i = 0; i < 6; i++) // TODO: 把这里改成已连接设备数
+    for (size_t i = 0; i < 1; i++) // TODO: 把这里改成已连接设备数
     {
         // 字符串打印到log_string
         sprintf(log_string, "Triggering OTA for device %d", i);
@@ -438,7 +438,7 @@ void ota_task(void *pvParameter)
         // 等待ACK
         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     }
-    for (size_t i = 0; i < 6; i++) // TODO: 把这里改成已连接设备数
+    for (size_t i = 0; i < 1; i++) // TODO: 把这里改成已连接设备数
     {
         xQueueReceive(Firmware::ota_complete_queue, &ota_complete_event_data, portMAX_DELAY);
         esp_log_buffer_hex(TAG_MAIN, &ota_complete_event_data, sizeof(OTA_COMPLETE_EVENT_DATA));
@@ -512,7 +512,7 @@ void config_task(void *pvParameter)
         sprintf(log_string, "Sending configuration to armour devices");
         esp_ble_gatts_send_indicate(spp_gatts_if, spp_conn_id, spp_handle_table[URL_VAL], strlen(log_string) + 1, (uint8_t *)log_string, false);
         // 发送给所有装甲板设备
-        for (uint8_t i = 0; i < 5; i++)
+        for (uint8_t i = 0; i < 1; i++)
         {
             config_event_data.config_armour_info.armour_id = i + 1;
             config_event_data.address = i;
@@ -1147,30 +1147,30 @@ extern "C" void app_main(void)
     ESP_LOGI(TAG_MAIN, "BLE Started.");
 
     // 发送STOP到各设备以复位
-    PRM_STOP_EVENT_DATA stop_event_data;
-    esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
-    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    // PRM_STOP_EVENT_DATA stop_event_data;
+    // esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
+    // xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
     // 发送STOP到各装甲板设备
     PRA_STOP_EVENT_DATA pra_stop_event_data;
-    for (uint8_t i = 0; i < 5; i++) // TODO: 改成5
+    for (uint8_t i = 0; i < 1; i++) // TODO: 改成5
     {
         pra_stop_event_data.address = i;
         esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     }
     // 电机停止
-    PRM_STOP_EVENT_DATA prm_stop_event_data;
-    esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
-    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    // PRM_STOP_EVENT_DATA prm_stop_event_data;
+    // esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
+    // xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
     // 启动LED动画，表示大符初始化完成
     xTaskCreate(led_animation_task, "led_animation_task", 2048, NULL, 5, &led_animation_task_handle);
 
     // 解锁电机
-    PRM_UNLOCK_EVENT_DATA unlock_event_data;
-    esp_event_post_to(pr_events_loop_handle, PRM, PRM_UNLOCK_EVENT, &unlock_event_data, sizeof(PRM_UNLOCK_EVENT_DATA), portMAX_DELAY);
-    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    // PRM_UNLOCK_EVENT_DATA unlock_event_data;
+    // esp_event_post_to(pr_events_loop_handle, PRM, PRM_UNLOCK_EVENT, &unlock_event_data, sizeof(PRM_UNLOCK_EVENT_DATA), portMAX_DELAY);
+    // xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
     vTaskSuspend(NULL);
 }
