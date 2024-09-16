@@ -976,7 +976,7 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
                     int32_t event_id = RESPONSE_EVENT;
                     send_data(received_data->src_MAC, PRC, event_id, NULL, 0, 0);
                 }
-                // 地址已知，但没有空位，说明ID设置有问题，在mac_addr中找到空位，重新建立。注意防止连续收到两个地址一样的。
+                // 地址未设置，或者地址已知但没有空位，说明ID设置有问题，在mac_addr中找到空位，重新建立。注意防止连续收到两个地址一样的。
                 else if (packet.event_data[0] == 0xFF || memcmp(mac_addr[packet.event_data[0]], received_data->src_MAC, ESP_NOW_ETH_ALEN) != 0)
                 {
                     // 寻找空位
