@@ -93,12 +93,14 @@ void PowerRune_Armour::LED_update_task(void *pvParameter)
                 }
             }
             led_strip[LED_STRIP_MAIN_ARMOUR]->refresh();
+            /* 以下字段用于2024版本大能量机关程序，但是在2025版本中因灯效改变而需要注释掉
             demux_led = LED_STRIP_UPPER;
             led_strip[LED_STRIP_UPPER]->set_color(state_task.color == PR_RED ? config_info->brightness : 0, 0, state_task.color == PR_RED ? 0 : config_info->brightness);
             led_strip[LED_STRIP_UPPER]->refresh();
             demux_led = LED_STRIP_LOWER;
             led_strip[LED_STRIP_LOWER]->set_color(state_task.color == PR_RED ? config_info->brightness : 0, 0, state_task.color == PR_RED ? 0 : config_info->brightness);
             led_strip[LED_STRIP_LOWER]->refresh();
+            */
             demux_led = LED_STRIP_ARM;
             led_strip[LED_STRIP_ARM]->refresh();
             // 开启矩阵流水灯
